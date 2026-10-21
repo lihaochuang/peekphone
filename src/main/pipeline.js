@@ -19,13 +19,9 @@ function setStore(s) {
   store = s;
 }
 
-// 仅用于「按了快捷键但没开始」这类即时反馈（忙碌/没提示词），不是异步失败。
+// 一律不弹桌面通知（用户明确要求）。所有情况只写滚动日志 + 手机页状态。
 function notify(title, body) {
-  try {
-    new Notification({ title, body: String(body).slice(0, 400) }).show();
-  } catch (e) {
-    /* 通知失败不致命 */
-  }
+  logEvent('NOTE ' + title + ': ' + String(body).slice(0, 400));
 }
 
 // 滚动日志：每次截图/分析的时间、provider/model、成功或失败原因全文写进 userData/logs/peek.log。

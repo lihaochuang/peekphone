@@ -48,34 +48,17 @@ async function boot() {
 
   // 本地服务
   const r = await server.start(conf.server.port, (msg) => {
-    try {
-      new Notification({ title: 'PeekPhone 服务', body: msg + '，请在设置里换端口' }).show();
-    } catch (e) {
-      /* ignore */
-    }
+    // 不弹任何桌面通知，只记控制台/日志
+    console.warn('[PeekPhone] 服务提示: ' + msg + '，请在设置里换端口');
   });
   if (!r.ok) {
-    try {
-      new Notification({
-        title: 'PeekPhone 服务启动失败',
-        body: '端口 ' + conf.server.port + ' 不可用，请在设置里换端口',
-      }).show();
-    } catch (e) {
-      /* ignore */
-    }
+    console.warn('[PeekPhone] 服务启动失败: 端口 ' + conf.server.port + ' 不可用，请在设置里换端口');
   }
 
   // 全局快捷键
   const ok = shortcut.register(conf.hotkey, () => pipeline.runCapture(config.get().currentPrompt));
   if (!ok) {
-    try {
-      new Notification({
-        title: 'PeekPhone 快捷键被占用',
-        body: conf.hotkey + ' 注册失败，请在设置里换一个',
-      }).show();
-    } catch (e) {
-      /* ignore */
-    }
+    console.warn('[PeekPhone] 快捷键 ' + conf.hotkey + ' 注册失败，请在设置里换一个');
   }
 
   // IPC

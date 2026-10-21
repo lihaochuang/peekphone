@@ -1,7 +1,7 @@
 {
   "name": "peekphone",
   "productName": "PeekPhone",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "按快捷键全屏截图，用你自己配置的多模态大模型分析，手机扫码在浏览器看结果。本地局域网 + 自带 key + 无隐身。",
   "license": "MIT",
   "author": "PeekPhone contributors",
@@ -19,7 +19,10 @@
     "compression": "maximum",
     "removePackageScripts": true,
     "npmRebuild": false,
-    "electronLanguages": ["zh-CN", "en-US"],
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
     "afterPack": "./afterPack.js",
     "files": [
       "src/**",
@@ -31,7 +34,15 @@
       "package.json"
     ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
       "identity": null,
@@ -41,10 +52,14 @@
       }
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "assets/icon.ico"
     },
-    "dmg": { "sign": false }
+    "dmg": {
+      "sign": false
+    }
   },
   "devDependencies": {
     "electron": "^33",
