@@ -1,7 +1,7 @@
 {
   "name": "peekphone",
   "productName": "PeekPhone",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "按快捷键全屏截图，用你自己配置的多模态大模型分析，手机扫码在浏览器看结果。本地局域网 + 自带 key + 无隐身。",
   "license": "MIT",
   "author": "PeekPhone contributors",
@@ -20,6 +20,7 @@
     "removePackageScripts": true,
     "npmRebuild": false,
     "electronLanguages": ["zh-CN", "en-US"],
+    "afterPack": "./afterPack.js",
     "files": [
       "src/**",
       "assets/icon.icns",
@@ -33,6 +34,7 @@
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
+      "identity": null,
       "extendInfo": {
         "NSScreenCaptureUsageDescription": "PeekPhone 需要屏幕录制权限来截取当前屏幕用于 AI 分析。",
         "LSUIElement": true

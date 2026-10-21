@@ -22,7 +22,7 @@ function captureState() {
     api_key: $('api_key').value,
     model: $('model').value.trim(),
     stream: $('stream').checked,
-    maxTokens: parseInt($('maxTokens').value, 10) || 1500,
+    maxTokens: parseInt($('maxTokens').value, 10) || 800,
     keepDays: parseInt($('keepDays').value, 10) || 7,
     shrinkLongEdge: parseInt($('shrinkLongEdge').value, 10) || 1200,
     jpegQuality: parseInt($('jpegQuality').value, 10) || 70,
@@ -158,7 +158,7 @@ function showSupported(list) {
 function draftConfig() {
   return {
     providers: [draftProvider()],
-    maxTokens: parseInt($('maxTokens').value, 10) || 1500,
+    maxTokens: parseInt($('maxTokens').value, 10) || 800,
     currentPrompt: $('currentPrompt').value || 'default',
   };
 }
@@ -309,7 +309,7 @@ async function init() {
   $('api_key').value = p.api_key || '';
   $('model').value = p.model || '';
   $('stream').checked = p.stream === true;
-  $('maxTokens').value = c.maxTokens || 1500;
+  $('maxTokens').value = c.maxTokens || 800;
   $('hotkeyInput').value = c.hotkey || 'CommandOrControl+Alt+P';
   $('keepDays').value = c.keepDays || 7;
   $('shrinkLongEdge').value = c.shrinkLongEdge || 1200;

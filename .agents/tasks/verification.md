@@ -174,3 +174,31 @@ GET /img/../../config.json -> 404  (路径穿越被挡)
 - **arm64 dmg / Windows 包**：本机 Intel，仅实测 x64；arm64 与 win 由 CI 构建，运行正确性待对应平台用户反馈（与 v0.1 口径一致）。
 - **托盘图标肉眼呈现**：`/tmp/peek_tray_verify.js` 实测 `nativeImage.createFromPath(assets/tray/trayTemplate.png)` → `empty=false size=22x22`，`tray.build()` 不抛错、`ok=true`；mac 菜单栏像素级外观需人工目视。
 - **全量 `npm start` 启动**：本机已安装的 `/Applications/PeekPhone.app`（用户在用，未动）持有单实例锁，故开发实例按设计 `requestSingleInstanceLock()` 立即自退、启动日志无报错——属单实例正确行为。主进程各模块在 `/tmp/peek_electron_verify.js`（`app.whenReady` 后 server/pipeline/capture 全链路）已证可加载运行。
+
+## v0.2.1 ad-hoc 签名（核心修复）
+问题：v0.2.0 的 mac 包 `mac.identity` 走 electron-builder 原生签名，ad-hoc 身份走不通其 `findIdentity` 被整体跳过，产物 `codesign -dv` 显示 *not signed at all*。而 macOS 屏幕录制(TCC)权限绑定代码签名身份，未签名 app 即使在「屏幕录制」里打勾，`desktopCapturer`/`screencapture` 实际仍被拒。
+
+修法：`package.json` 的 `build.mac.identity: null`（显式跳过原生签名，日志干净）+ 新增 `build.afterPack: "./afterPack.js"` 钩子，对 `context.appOutDir` 下的 `.app` 跑 `codesign --force --deep --sign -`（纯本地 ad-hoc，无苹果证书/公证）。用 afterPack 而非 afterSign，因为 afterSign 只在原生签名实际发生时才触发。
+
+**构建实测（本机 Intel x64 Mac，`npm run dist:mac`）**：x64 目标成功产出 `dist/PeekPhone-0.2.1.dmg`（95,298,430 B）。afterPack 钩子日志打印 `Signature=adhoc`。arm64 目标因需从 github.com 下载 `electron-v33.4.11-darwin-arm64.zip` 遇网络 EOF 失败（与本次改动无关，arm64 包本就由 CI 构建），不影响 x64 验证。
+
+**挂载 dmg 验签**（`hdiutil attach` → `codesign -dv`）：
+```
+Executable=/Volumes/PeekPhone 0.2.1/PeekPhone.app/Contents/MacOS/PeekPhone
+Identifier=com.peekphone.app
+Format=app bundle with Mach-O thin (x86_64)
+CodeDirectory v=20400 size=362 flags=0x2(adhoc) hashes=5+3 location=embedded
+Signature=adhoc
+Info.plist entries=33
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=11
+Internal requirements count=0 size=12
+```
+`codesign --verify --verbose=2` 结果：`valid on disk` + `satisfies its Designated Requirement`。即不再是 not signed，ad-hoc 签名生效。
+
+端到端截图需用户在 TCC 授权框手动放行，agent 无法点系统授权框，不在本次自动验证范围；签名生效即解除「打勾也截不到」的根因。
+
+## v0.2.1 其余改动
+- **max_tokens 默认 1500 → 800**：`config.js` 的 `defaults().maxTokens=800`（已有用户 config.json 不覆盖，只影响首次生成）；`settings.html` 输入框默认值 800 + 旁加提示「越大越慢，日常解读 600~800 够用」；`settings.js`/`llm.js` 的 `|| 1500` 回退同步改 800。`node --check` 全通过。
+- **赞助码去名**：`assets/sponsor-wechat.jpg` 已为去名版本（图未动）；确认 `ipc.js`、`server.js`、README 均引用 `assets/sponsor-wechat.jpg` 该路径，无需改引用。
+- **README**：安装小节改为「mac ad-hoc 签名但未公证（无苹果账号，属正常）」并补首启授权步骤；新增「故障排查」小节给出 `tccutil reset ScreenCapture com.peekphone.app`（针对从未签名旧版升级后授权失配），均中英双语。

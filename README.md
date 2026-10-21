@@ -48,10 +48,12 @@ GitHub 上「截图问 AI」的工具不少，PeekPhone 故意收敛成这三点
 
 ## 安装
 
-本仓库未签名、未公证（无 Apple 开发者账号 / Windows 证书），首次打开会被系统拦：
+mac 包做了本地 **ad-hoc 签名**（让屏幕录制权限能真正生效），但**未公证**（因为没有 Apple 开发者账号，属正常）；Windows 包未签名。首次打开仍会被系统拦：
 
-- **macOS**：右键 App → 打开 → 再点「打开」；或 系统设置 → 隐私与安全性 → 「仍要打开」。
+- **macOS**：右键 App →「打开」→ 再点「打开」绕过 Gatekeeper；或 系统设置 → 隐私与安全性 → 「仍要打开」。然后到 系统设置 → 隐私与安全性 → **屏幕录制**，把 PeekPhone 的开关打开。
 - **Windows**：SmartScreen 拦截时点「更多信息」→「仍要运行」。
+
+*The mac build is **ad-hoc signed** locally (so Screen Recording permission actually takes effect) but **not notarized** (no Apple Developer account — this is expected). On first launch: right-click the app → Open → Open again to bypass Gatekeeper, then enable PeekPhone under System Settings → Privacy & Security → Screen Recording. On Windows, click "More info" → "Run anyway" when SmartScreen blocks it.*
 
 从 [Releases](../../releases) 下载对应平台安装包（由 GitHub Actions 构建），或本地构建：
 
@@ -74,6 +76,16 @@ npm run dist:win   # 打 win nsis
 
 截图依赖「屏幕录制」权限。首次截图时系统会请求授权，在 **系统设置 → 隐私与安全性 → 屏幕录制** 中放行 PeekPhone 后**重开 App**。开发期（`npm start`，由终端拉起）授权对象可能是终端/Electron，打包成 PeekPhone.app 后需**重新授权一次**。若 `screencapture` 子进程在你的 macOS 版本上截到黑帧，App 会自动降级到进程内的 `desktopCapturer`。
 
+#### 故障排查：授了权仍截不了图 / Troubleshooting
+
+屏幕录制权限绑定在**代码签名身份**上。如果你曾装过更早的**未签名**版本并授过权，升级到本版后系统可能把两者当成不同身份，导致列表里打了勾却仍截不到图（报 `Failed to get sources`）。此时在终端跑一次下面的命令清掉旧授权记录，再重开 App 重新授权即可：
+
+```bash
+tccutil reset ScreenCapture com.peekphone.app
+```
+
+*Screen Recording permission is tied to the app's code-signing identity. If you previously granted permission to an older **unsigned** build, after upgrading macOS may treat it as a different identity — the checkbox stays on but capture still fails (`Failed to get sources`). Run the command above once to clear the stale grant, then reopen the app and re-authorize.*
+
 ## 安全说明
 
 - 本地服务监听 `0.0.0.0`：**同子网主机都能连到这个端口，token 是唯一防线**，别把带 `?t=<token>` 的链接转发出去。
@@ -90,7 +102,7 @@ npm run dist:win   # 打 win nsis
 - **Windows 包 / Apple Silicon 包未在本机实测**：本机是 Intel Mac，只验证了 x64 dmg 能装能跑；Windows（`desktopCapturer` 截图路径、清晰度）和 arm64 包由 CI 构建保证能编译，运行正确性需对应平台用户反馈。
 - 手机只读看结果，不能对着截图继续追问；要换角度就在电脑换提示词重截。
 - 局域网 IP 随 DHCP / 换网络变化，换网后在设置里重新看二维码。
-- 未签名版本的 mac 开机自启在部分系统可能需手动到系统设置里添加。
+- mac 开机自启在部分系统可能需手动到系统设置里添加（ad-hoc 签名、未公证）。
 
 ## 架构
 

@@ -40,7 +40,7 @@ function defaults() {
       'glm-4v',
       'glm-4.5v',
     ],
-    maxTokens: 1500,
+    maxTokens: 800,
     shrinkLongEdge: 1200,
     jpegQuality: 70,
     keepDays: 7,

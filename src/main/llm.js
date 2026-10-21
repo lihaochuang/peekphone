@@ -496,7 +496,7 @@ async function resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTo
 // 返回 {text, raw, via}；全失败抛带 .friendly/.detail/.supported_models 的 ModelError。
 async function analyze(imageBuffer, mediaType, prompt, config, onDelta) {
   const imageB64 = imageBuffer.toString('base64');
-  const maxTokens = parseInt(config.maxTokens, 10) || 1500;
+  const maxTokens = parseInt(config.maxTokens, 10) || 800;
   const priority =
     Array.isArray(config.model_priority) && config.model_priority.length
       ? config.model_priority

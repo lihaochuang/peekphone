@@ -43,7 +43,8 @@
         </span>
       </label>
       <label>模型名 <input id="model" type="text" placeholder="默认自动（留空即自动选择可用的视觉模型）" /></label>
-      <label>max_tokens <input id="maxTokens" type="number" value="1500" /></label>
+      <label>max_tokens <input id="maxTokens" type="number" value="800" /></label>
+      <p class="hint">越大越慢，日常解读 600~800 够用。</p>
       <label class="inline"><input id="stream" type="checkbox" /> 流式输出（不支持的端点会自动回退）</label>
       <p id="supportedModels" class="hint"></p>
       <div class="row">
