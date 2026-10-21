@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>PeekPhone 设置</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <nav class="tabs">
+    <button data-tab="model" class="active">模型</button>
+    <button data-tab="prompts">提示词</button>
+    <button data-tab="hotkey">快捷键</button>
+    <button data-tab="phone">手机连接</button>
+    <button data-tab="general">通用</button>
+  </nav>
+
+  <main>
+    <!-- 模型配置 -->
+    <section data-pane="model" class="active">
+      <h2>模型配置</h2>
+      <label>预设
+        <select id="preset">
+          <option value="">— 选预设自动填 —</option>
+          <option value="zhipu">智谱 GLM（OpenAI 兼容）</option>
+          <option value="bailian">阿里百炼 qwen-vl（OpenAI 兼容）</option>
+          <option value="openai">自定义 OpenAI 兼容</option>
+          <option value="anthropic">自定义 Anthropic 兼容</option>
+        </select>
+      </label>
+      <label>请求格式
+        <span class="radio"><input type="radio" name="format" value="openai_chat" /> OpenAI 兼容</span>
+        <span class="radio"><input type="radio" name="format" value="anthropic_messages" /> Anthropic 兼容</span>
+      </label>
+      <label>Base URL <input id="base_url" type="text" placeholder="https://..." /></label>
+      <label>API Key
+        <span class="keyrow">
+          <input id="api_key" type="password" placeholder="你的模型 key（存本机，不进仓库）" />
+          <button id="toggleKey" type="button">👁</button>
+        </span>
+      </label>
+      <label>模型名 <input id="model" type="text" placeholder="如 glm-4v / qwen-vl-plus / claude-..." /></label>
+      <label>max_tokens <input id="maxTokens" type="number" value="1500" /></label>
+      <div class="row">
+        <button id="saveModel" type="button">保存模型配置</button>
+        <button id="testBtn" type="button">测试识别（真截屏+真调模型）</button>
+      </div>
+      <pre id="testResult" class="result"></pre>
+    </section>
+
+    <!-- 提示词 -->
+    <section data-pane="prompts">
+      <h2>提示词管理</h2>
+      <div class="promptpick">
+        <select id="promptList"></select>
+        <input id="newPromptName" type="text" placeholder="新建提示词名" />
+        <button id="newPromptBtn" type="button">新建</button>
+        <button id="delPromptBtn" type="button">删除当前</button>
+      </div>
+      <textarea id="promptText" rows="14" placeholder="提示词内容"></textarea>
+      <div class="row">
+        <button id="savePromptBtn" type="button">保存提示词</button>
+        <label class="inline">当前使用：
+          <select id="currentPrompt"></select>
+        </label>
+      </div>
+      <p class="hint">保存即生效，下次截图现读。</p>
+    </section>
+
+    <!-- 快捷键 -->
+    <section data-pane="hotkey">
+      <h2>全局快捷键</h2>
+      <p>点下面的框然后按下组合键。默认 <code>CommandOrControl+Alt+P</code>（mac ⌘⌥P）。</p>
+      <input id="hotkeyInput" type="text" readonly placeholder="点此再按组合键" />
+      <div class="row">
+        <button id="saveHotkey" type="button">保存快捷键</button>
+      </div>
+      <p id="hotkeyMsg" class="hint"></p>
+      <p class="hint">不支持纯修饰键双击（如 ⌘⌘）。</p>
+    </section>
+
+    <!-- 手机连接 -->
+    <section data-pane="phone">
+      <h2>手机连接</h2>
+      <p>手机连同一 WiFi，扫码或在浏览器打开下面的地址：</p>
+      <img id="qr" alt="二维码" />
+      <div class="urlrow">
+        <input id="phoneUrl" type="text" readonly />
+        <button id="copyUrl" type="button">复制</button>
+      </div>
+      <div class="row">
+        <label class="inline">端口 <input id="port" type="number" value="8765" /></label>
+        <button id="savePort" type="button">改端口</button>
+        <button id="resetToken" type="button">重置 token（旧链接立即失效）</button>
+      </div>
+      <p id="phoneMsg" class="hint"></p>
+      <p class="hint">明文 HTTP，同网段抓包可见，只在可信网络用。</p>
+    </section>
+
+    <!-- 通用 -->
+    <section data-pane="general">
+      <h2>通用</h2>
+      <label class="inline"><input id="launchAtLogin" type="checkbox" /> 开机自启</label>
+      <label>历史保留天数 <input id="keepDays" type="number" value="7" /></label>
+      <label>压缩长边(px) <input id="shrinkLongEdge" type="number" value="1200" /></label>
+      <label>JPEG 质量(1-100) <input id="jpegQuality" type="number" value="70" /></label>
+      <div class="row"><button id="saveGeneral" type="button">保存通用设置</button></div>
+      <p class="hint">未签名版本开机自启在部分系统可能需手动在系统设置里添加。</p>
+    </section>
+  </main>
+
+  <script src="settings.js"></script>
+</body>
+</html>

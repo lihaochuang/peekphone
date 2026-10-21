@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PeekPhone 界面演示</title>
+<style>
+:root{
+  --bg:#ececf0; --panel:#ffffff; --ink:#1d1d1f; --sub:#86868b; --line:#e3e3e8;
+  --accent:#0a84ff; --green:#30d158; --radius:12px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:-apple-system,"PingFang SC",BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;padding:28px}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 24px;font-size:14px}
+.grid{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.stage{flex:1 1 360px;min-width:320px}
+.cap{font-size:12px;color:var(--sub);margin:0 0 8px;font-weight:600;letter-spacing:.02em}
+.win{background:var(--panel);border-radius:var(--radius);box-shadow:0 10px 40px rgba(0,0,0,.14);overflow:hidden;border:1px solid var(--line)}
+.titlebar{height:38px;background:linear-gradient(#f6f6f8,#ececef);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%}
+.r{background:#ff5f57}.y{background:#febc2e}.g{background:#28c840}
+.titlebar .t{font-size:13px;color:var(--sub);margin-left:6px}
+.body{padding:18px}
+label.fld{display:block;font-size:12px;color:var(--sub);margin:14px 0 5px;font-weight:600}
+.inp{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px;font-family:var(--sans);background:#fafafc}
+.inp.mono{font-family:var(--mono);font-size:12px}
+select.inp{appearance:none;background:#fafafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2386868b'/%3E%3C/svg%3E") no-repeat right 11px center}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--accent);color:#fff}
+.btn.ghost{background:#f0f0f3;color:var(--ink)}
+.hint{font-size:11px;color:var(--sub);margin-top:6px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 12px;background:#f6f6f8}
+.tab{padding:10px 14px;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;cursor:default}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;background:#eafaf0;color:#1a7f37;border-radius:20px;padding:3px 10px;font-weight:600}
+.pill .d{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.kbd{font-family:var(--mono);background:#f0f0f3;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:3px 8px;font-size:12px}
+.note{background:#fff8e6;border:1px solid #f5e3a8;border-radius:8px;padding:10px 12px;font-size:12px;color:#7a5c00;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>PeekPhone · 界面演示（静态仿真，非最终成品）</h1>
+<p class="lead">按设计稿画的样子：托盘菜单、设置窗口、连手机、首启隐私提示、手机端页面。实际 App 正在构建，像素细节以成品为准。</p>
+<div class="grid" id="root">
+
+<!-- 托盘菜单 -->
+<div class="stage" style="flex:0 1 300px">
+  <p class="cap">① 菜单栏托盘（点顶栏小图标弹出）</p>
+  <div class="win" style="max-width:280px">
+    <div style="background:#2a2a2e;border-radius:12px;padding:6px;color:#f5f5f7;font-size:13px">
+      <div style="padding:7px 12px;display:flex;justify-content:space-between;align-items:center">
+        <span>立即截图分析</span><span style="color:#9b9ba0" class="kbd" >⌘⌥P</span>
+      </div>
+      <div style="height:1px;background:#45454a;margin:4px 8px"></div>
+      <div style="padding:7px 12px;color:#9b9ba0;font-size:11px">提示词</div>
+      <div style="padding:7px 12px;display:flex;justify-content:space-between"><span>✓ 通用解读</span></div>
+      <div style="padding:7px 12px">代码报错排查</div>
+      <div style="padding:7px 12px">图表数据解读</div>
+      <div style="height:1px;background:#45454a;margin:4px 8px"></div>
+      <div style="padding:7px 12px">显示手机二维码…</div>
+      <div style="padding:7px 12px">设置…</div>
+      <div style="height:1px;background:#45454a;margin:4px 8px"></div>
+      <div style="padding:7px 12px;color:#9b9ba0">退出 PeekPhone</div>
+    </div>
+  </div>
+  <div class="note">纯托盘常驻，不占 Dock。这是普通菜单栏 App 的标准形态，<b>不隐藏进程、不做任何反检测</b>。</div>
+</div>
+
+<!-- 设置窗口 -->
+<div class="stage">
+  <p class="cap">② 设置窗口 · 模型</p>
+  <div class="win">
+    <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">PeekPhone 设置</span></div>
+    <div class="tabs"><span class="tab on">模型</span><span class="tab">提示词</span><span class="tab">快捷键</span><span class="tab">手机</span><span class="tab">通用</span></div>
+    <div class="body">
+      <label class="fld">预设</label>
+      <select class="inp"><option>智谱 GLM-4.6V-Flash（免费 · OpenAI 兼容）</option><option>阿里百炼 qwen-vl（OpenAI 兼容）</option><option>自定义 OpenAI 兼容</option><option>自定义 Anthropic 兼容</option></select>
+      <label class="fld">Base URL</label>
+      <input class="inp mono" value="https://open.bigmodel.cn/api/paas/v4">
+      <label class="fld">API Key</label>
+      <input class="inp mono" type="password" value="................................">
+      <div class="row">
+        <div><label class="fld">模型名</label><input class="inp mono" value="glm-4.6v-flash"></div>
+        <div><label class="fld">请求格式</label><select class="inp"><option>OpenAI /chat/completions</option><option>Anthropic /messages</option></select></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:18px">
+        <button class="btn pri">测试识图</button>
+        <span class="pill"><span class="d"></span>连接正常 · 模型已认出屏幕内容</span>
+      </div>
+      <div class="hint">「测试识图」会真截一张当前屏幕发给模型，验证配置可用。Key 存在本机，不进仓库、不上传。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 连手机 -->
+<div class="stage" style="flex:0 1 320px">
+  <p class="cap">③ 连手机（设置 · 手机页）</p>
+  <div class="win">
+    <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">连接手机</span></div>
+    <div class="body" style="text-align:center">
+      <p style="font-size:13px;color:var(--sub);margin:0 0 14px">手机连同一 WiFi，扫码或输地址打开</p>
+      <div style="width:150px;height:150px;margin:0 auto;border:6px solid #fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.1);background:repeating-linear-gradient(90deg,#000 0 6px,#fff 6px 12px),repeating-linear-gradient(#000 0 6px,#fff 6px 12px);background-blend-mode:difference;position:relative">
+        <div style="position:absolute;top:8px;left:8px;width:34px;height:34px;border:6px solid #000;background:#fff"></div>
+        <div style="position:absolute;top:8px;right:8px;width:34px;height:34px;border:6px solid #000;background:#fff"></div>
+        <div style="position:absolute;bottom:8px;left:8px;width:34px;height:34px;border:6px solid #000;background:#fff"></div>
+        <div style="position:absolute;top:16px;left:16px;width:18px;height:18px;background:#000"></div>
+        <div style="position:absolute;top:16px;right:16px;width:18px;height:18px;background:#000"></div>
+        <div style="position:absolute;bottom:16px;left:16px;width:18px;height:18px;background:#000"></div>
+      </div>
+      <div class="inp mono" style="margin-top:14px;text-align:left;word-break:break-all;font-size:11px">http://192.168.88.177:8765/?t=SKSEppiV7bl6gnVRR3ewsefp</div>
+      <button class="btn ghost" style="margin-top:10px;width:100%">复制地址</button>
+      <div class="note" style="text-align:left">地址带 token，同网段任何人拿到都能看你的截图，<b>别转发到群里</b>。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 首启隐私提示 -->
+<div class="stage" style="flex:0 1 320px">
+  <p class="cap">④ 首次启动 · 一次性提示</p>
+  <div class="win" style="max-width:340px">
+    <div class="body" style="text-align:center;padding:26px 24px">
+      <div style="font-size:40px">🔒</div>
+      <h3 style="margin:10px 0 6px;font-size:16px">截图会发给第三方 AI</h3>
+      <p style="font-size:13px;color:var(--sub);margin:0 0 18px">你按快捷键后，整屏截图会发送到你自己配置的 AI 服务做分析。<b>请勿截取敏感信息或公司内部内容。</b></p>
+      <button class="btn pri" style="width:100%">我明白了</button>
+      <div class="hint">只弹这一次，确认后不再出现。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 手机页面 -->
+<div class="stage" style="flex:0 1 300px">
+  <p class="cap">⑤ 手机端页面（只显示最新一条 · 2 秒自动刷新）</p>
+  <div style="max-width:260px;margin:0 auto;background:#000;border-radius:34px;padding:10px;box-shadow:0 12px 40px rgba(0,0,0,.25)">
+    <div style="background:#f5f5f7;border-radius:26px;overflow:hidden;height:460px;display:flex;flex-direction:column">
+      <div style="padding:14px 14px 8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#86868b">
+        <span style="width:7px;height:7px;border-radius:50%;background:#30d158"></span>
+        <b style="color:#1d1d1f;font-size:13px">13:17:34 · 通用</b><span>自动刷新中</span>
+      </div>
+      <div style="padding:0 12px;overflow:auto">
+        <div style="background:#fff;border-radius:12px;padding:8px;margin-bottom:10px">
+          <div style="background:linear-gradient(135deg,#dfe7f5,#eef1f7);border-radius:8px;height:120px;display:flex;align-items:center;justify-content:center;color:#90a0bd;font-size:12px">[ 截图缩略 ]</div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;font-size:12.5px;line-height:1.7">
+          <b>1. 这屏在干什么</b><br>微信桌面版，左侧和"宝宝"的对话，右侧是上海大学公众号推文。<br><br>
+          <b>2. 关键信息</b><br>对话在讲"电脑和手机连同一热点就行"，对方回"太厉害了"。<br><br>
+          <b>3. 建议</b><br>如需把方法沉淀，可整理成一页图文说明。
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note">截图一出现，手机这页自己刷新，不用手动操作。</div>
+</div>
+
+</div>
+</body>
+</html>

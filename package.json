@@ -1,0 +1,41 @@
+{
+  "name": "peekphone",
+  "productName": "PeekPhone",
+  "version": "0.1.0",
+  "description": "按快捷键全屏截图，用你自己配置的多模态大模型分析，手机扫码在浏览器看结果。本地局域网 + 自带 key + 无隐身。",
+  "license": "MIT",
+  "author": "PeekPhone contributors",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.peekphone.app",
+    "productName": "PeekPhone",
+    "files": ["src/**", "build/**", "package.json"],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "extendInfo": {
+        "NSScreenCaptureUsageDescription": "PeekPhone 需要屏幕录制权限来截取当前屏幕用于 AI 分析。",
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
+    },
+    "dmg": { "sign": false }
+  },
+  "devDependencies": {
+    "electron": "^33",
+    "electron-builder": "^25"
+  },
+  "dependencies": {
+    "qrcode": "^1.5"
+  }
+}

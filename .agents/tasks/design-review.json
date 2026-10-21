@@ -1,0 +1,34 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "title": "openai_chat 的 extract 缺少 py 的防御式取值",
+      "location": "§6 extract(spec, data)",
+      "problem": "设计写 data.choices[0].message.content，无 py 的 choices=data.get('choices') or [{}] 保护；畸形 200 响应会抛 TypeError 并被 §6 误归为可重试网络异常，白重试且错误信息不清。",
+      "fix": "改用 data?.choices?.[0]?.message?.content || '' 防御取值，缺字段按空文本触发'空文本视为失败'；anthropic 分支对 data.content 做 || [] 保护。"
+    },
+    {
+      "severity": "NIT",
+      "title": "captureViaDesktopCapturer 的 resize(长边1200) 未定维度",
+      "location": "§5 伪代码",
+      "problem": "nativeImage.resize 只给一维才保持比例，需先判断宽高谁大再传 width/height，否则横竖屏压错方向。",
+      "fix": "伪代码写清：const {width:w,height:h}=img.getSize(); const opt=w>=h?{width:1200}:{height:1200}; img.resize(opt).toJPEG(70)。"
+    },
+    {
+      "severity": "NIT",
+      "title": "pipeline 的'立刻刷新 /latest key'措辞像后端推送",
+      "location": "§4 pipeline",
+      "problem": "/latest 是手机轮询拉取、key 每请求现算，后端无'刷新 key'动作；且该步在 saveImage 前此刻无截图。措辞会误导 coder 以为需先存图或建推送。",
+      "fix": "改为'建 slot(pending)后下一次手机轮询即读到 pending；截图在 capture+saveImage 后出现'，去掉推送式表述。"
+    },
+    {
+      "severity": "NIT",
+      "title": "config 字段大小写混用",
+      "location": "§8 默认配置 / §6 resolveProvider",
+      "problem": "顶层 camelCase、provider 内 snake_case；§6 读 p.api_key/p.base_url，若实现时把 provider 字段也 camelCase 化会读到 undefined。",
+      "fix": "加约束说明：provider 内部字段保持 snake_case 与 §6 读取一致，顶层用 camelCase。"
+    }
+  ],
+  "reviewDoc": "/Users/harry/诺亚方舟/任务档案/20261021_PeekPhone桌面App/.agents/tasks/design-review.md"
+}
