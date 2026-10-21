@@ -62,11 +62,22 @@ function handle(req, res) {
   }
 
   if (pathname === '/latest') {
-    const payload = JSON.stringify({ key: store.latestKey() });
+    const payload = JSON.stringify({
+      key: store.latestKey(),
+      showSponsor: config.shouldShowSponsor(),
+    });
     return send(res, 200, 'application/json; charset=utf-8', payload, { 'Cache-Control': 'no-store' });
   }
 
-  // 赞助码图（鉴权后返回，不内联进 HTML）
+  // 用户在手机页点「知道了」关闭 aha 赞助卡片，写回 config 之后不再提（走现有 token 鉴权）。
+  if (pathname === '/sponsor/dismiss') {
+    config.dismissSponsor();
+    return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true }), {
+      'Cache-Control': 'no-store',
+    });
+  }
+
+  // 赞助码图（鉴权后返回，不内联进 HTML）。图缺失（CI 未注入 / fork）返回 404，前端走文字降级。
   if (pathname === '/sponsor') {
     if (!fs.existsSync(SPONSOR_PATH)) return send(res, 404, 'text/plain', 'not found');
     const data = fs.readFileSync(SPONSOR_PATH);
@@ -96,7 +107,10 @@ function handle(req, res) {
   // /
   const key = store.latestKey();
   const item = store.latest();
-  const html = page.renderPage(item, token, key);
+  const html = page.renderPage(item, token, key, {
+    showSponsor: config.shouldShowSponsor(),
+    sponsorAvailable: fs.existsSync(SPONSOR_PATH),
+  });
   return send(res, 200, 'text/html; charset=utf-8', html, { 'Cache-Control': 'no-store' });
 }
 

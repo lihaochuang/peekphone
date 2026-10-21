@@ -98,6 +98,12 @@ async function runCapture(promptName) {
       );
       store.saveAnalysis(slot, stamp, name, via, text);
       store.purge(parseInt(conf.keepDays, 10) || 7);
+      // aha 时刻：一次有效分析成功 +1，供手机页在首次成功后低调提一次赞助。
+      try {
+        config.recordSuccess();
+      } catch (e) {
+        /* 计数失败不影响主流程 */
+      }
       logEvent('OK slot=' + slot + ' via=' + via + ' len=' + text.length);
       return { ok: true, slot, via, head: text.slice(0, 160) };
     } catch (error) {

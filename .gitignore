@@ -3,6 +3,8 @@ dist/
 out/
 *.log
 .DS_Store
+# 个人收款码不进仓库；CI 构建时从 secret SPONSOR_QR_B64 解码注入（见 .github/workflows/build.yml）
+assets/sponsor-wechat.jpg
 
 # 运行时数据本在 userData（不在项目树内）；此处双保险拦误放到项目内的运行产物
 /config.json

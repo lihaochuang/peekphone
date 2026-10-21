@@ -18,9 +18,9 @@
 
 ## 演示 / Screenshots
 
-| 设置（模型页）| 手机页·最新一条 | 手机页·空状态 |
-|---|---|---|
-| ![设置](assets/screenshots/settings.png) | ![最新](assets/screenshots/phone-latest.png) | ![空状态](assets/screenshots/phone-empty.png) |
+| 设置（模型页）| 手机页·最新一条 |
+|---|---|
+| ![设置](assets/screenshots/settings.png) | ![最新](assets/screenshots/phone-latest.png) |
 
 > 均为本机真实运行截图（Electron `capturePage`）。本机无 `ffmpeg`/`gifski` 工具链，未伪造动图，用静态截图序列代替演示。
 > *Real screenshots captured on-device; no gif toolchain available locally, so static shots are used instead of a faked animation.*
@@ -33,7 +33,7 @@
 - **手机历史可翻页**：默认仍只看最新一条，底部「查看更早」一条条往前翻，翻页时暂停自动刷新，「回到最新」恢复。
 - **流式输出**：支持流的端点边收边显示（手机页文本逐步变长）；不支持流的端点（如本机反代）自动回退非流式，不会弄挂。per-provider 开关，默认关。
 - **应用 / 托盘图标**：蓝色取景框 + 镜头的品牌图标（`assets/icon-src/` 下矢量源 + 零依赖生成脚本）。
-- **赞助页**：托盘「赞助作者 ❤️」+ 手机空状态默认展示收款码。
+- **赞助页**：托盘「赞助作者 ❤️」入口 + 手机页首次分析成功后低调提一次（可关闭、只提一次）。
 - **测试即保存**：设置页「测试识别」通过后自动落盘，不再出现「测了没保存、手机还用旧配置」的脱节；改了没保存关窗口会提示。
 - **失败不打扰**：截图/分析失败不弹任何桌面通知，原因写进手机页 error 态 + `userData/logs/peek.log` 滚动日志。
 - **包体积**：mac x64 dmg 从 ~103MB 降到 ~89.5MB（maximum 压缩 + 语言包裁剪 + files 收窄）。
@@ -117,12 +117,10 @@ v0.2 的模型调用层（`llm.js`）新增：URL 版本段判定、SSE 流式�
 
 ## 赞助 / Sponsor
 
-如果 PeekPhone 帮到了你，欢迎扫码请我喝杯咖啡 ☕。开源免费，赞助全凭自愿。
-托盘菜单「赞助作者 ❤️」或设置页「赞助」标签页也能看到同一个码。
+如果 PeekPhone 帮到了你，欢迎支持一下 ☕。开源免费，赞助全凭自愿。
+收款码在应用内：托盘菜单「赞助作者 ❤️」或设置页「赞助」标签页可以看到（官方发布版内置，自行构建的 fork 不含）。
 
-*If PeekPhone helps you, feel free to buy me a coffee. It's free and open-source; sponsoring is entirely optional.*
-
-<img src="assets/sponsor-wechat.jpg" alt="赞助二维码 / Sponsor QR" width="240" />
+*If PeekPhone helps you, feel free to support it ☕. It's free and open-source; sponsoring is entirely optional. The QR code lives inside the app (tray menu or Settings → Sponsor) in official release builds.*
 
 ## License
 

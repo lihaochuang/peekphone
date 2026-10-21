@@ -48,9 +48,15 @@ function defaults() {
     currentPrompt: 'default',
     launchAtLogin: false,
     noticeAcknowledged: false,
+    // aha 时刻赞助：successCount 累计成功分析次数；sponsorShown 置真后手机页不再提赞助。
+    successCount: 0,
+    sponsorShown: false,
     server: { port: 8765, token: '' },
   };
 }
+
+// 阈值：第 1 次成功分析即算 aha 时刻。觉得第 3 次更稳可改这里（连带注释）。
+const SPONSOR_SUCCESS_THRESHOLD = 1;
 
 function writeFile(data) {
   const p = configPath();
@@ -107,4 +113,31 @@ function resetToken() {
   return data.server.token;
 }
 
-module.exports = { get, update, getToken, resetToken, configPath, defaults };
+// 一次有效分析成功后 +1（pipeline 调用）。
+function recordSuccess() {
+  const d = get();
+  return update({ successCount: (parseInt(d.successCount, 10) || 0) + 1 });
+}
+
+// 手机页该不该低调提一次赞助：到阈值且还没提过。
+function shouldShowSponsor() {
+  const d = get();
+  return !d.sponsorShown && (parseInt(d.successCount, 10) || 0) >= SPONSOR_SUCCESS_THRESHOLD;
+}
+
+// 用户点「知道了」后置真，之后不再提。
+function dismissSponsor() {
+  return update({ sponsorShown: true });
+}
+
+module.exports = {
+  get,
+  update,
+  getToken,
+  resetToken,
+  configPath,
+  defaults,
+  recordSuccess,
+  shouldShowSponsor,
+  dismissSponsor,
+};

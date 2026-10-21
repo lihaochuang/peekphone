@@ -25,6 +25,12 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      # 收款码不进仓库：有 secret 时解码写入 assets/，没有（fork）则静默跳过、构建照常成功。
+      # node 一行跨平台（mac/windows runner 都能跑）。
+      - name: Inject sponsor QR (optional)
+        run: node -e "const b=process.env.SPONSOR_QR_B64; if(b){require('fs').mkdirSync('assets',{recursive:true}); require('fs').writeFileSync('assets/sponsor-wechat.jpg', Buffer.from(b,'base64'))}"
+        env:
+          SPONSOR_QR_B64: ${{ secrets.SPONSOR_QR_B64 }}
       - name: Build
         run: npm run dist -- --publish never
       - name: Upload artifacts

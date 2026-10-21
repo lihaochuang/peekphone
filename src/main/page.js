@@ -1,8 +1,13 @@
 'use strict';
 // 手机页面 HTML。移植 serve.py 的 PAGE 模板 / pretty() / 三态文案 / 2s 轮询 JS / 深浅色。
 // v0.2：默认仍只渲染最新一条 + 2s 轮询；底部加「查看更早」历史翻页（客户端拉 /history、/item，
-//   翻页态暂停轮询、显示「回到最新」）；空状态默认展示赞助二维码；有截图时底部放不显眼赞助入口。
-// 导出 renderPage(item, token, key) 与 renderEmpty(token)。token/key 经 JSON.stringify 注入脚本。
+//   翻页态暂停轮询、显示「回到最新」）。
+// v0.2.4：空状态只放引导文案、不放赞助；用户首次分析成功后（aha 时刻）在结果下方显示一张
+//   低调可关闭、只提一次的赞助卡片（showSponsor 由 server 传入）；收款码图缺失时走文字+链接降级。
+// 导出 renderPage(item, token, key, opts) 与 renderEmpty(token)。token/key 经 JSON.stringify 注入脚本。
+
+// 项目主页：收款码缺失时的文字降级链接。
+const GITHUB_URL = 'https://github.com/lihaochuang/peekphone';
 
 // 自写 HTML escape（Node 侧无 html.escape）。
 function escapeHtml(s) {
@@ -157,6 +162,13 @@ if(document.getElementById('showHist'))
 document.getElementById('histOlder').addEventListener('click',()=>{if(histIdx<histList.length-1){histIdx++;showHist();window.scrollTo(0,0);}});
 document.getElementById('histNewer').addEventListener('click',()=>{if(histIdx>0){histIdx--;showHist();window.scrollTo(0,0);}});
 document.getElementById('histBack').addEventListener('click',backToLive);
+// aha 赞助卡片：点「知道了」写回 config（只提一次），本地移除卡片，不整页刷新。
+function dismissSponsor(){
+  fetch('/sponsor/dismiss?t='+enc(T),{method:'POST',cache:'no-store'}).catch(function(e){});
+  const el=document.getElementById('ahaCard'); if(el)el.remove();
+}
+if(document.getElementById('ahaClose'))
+  document.getElementById('ahaClose').addEventListener('click',dismissSponsor);
 </script></body></html>`;
 
 const NOTE = { done: '自动刷新中', pending: '分析中', error: '出错了' };
@@ -193,22 +205,36 @@ function fill(title, note, content, footer, token, key, hasItems) {
     .replace('__HAS_ITEMS__', JSON.stringify(!!hasItems));
 }
 
-// 空状态：默认展示赞助二维码 + 文案 + 截图提示。key 与 store.latestKey() 空态一致（'empty'）。
+// 空状态：只放引导文案，不放任何赞助/收款码。key 与 store.latestKey() 空态一致（'empty'）。
 function renderEmpty(token) {
-  const qr =
-    '/sponsor?t=' + encodeURIComponent(token);
-  const content =
-    '<div class="card sponsor-card">' +
-    '<img src="' + qr + '" alt="赞助二维码">' +
-    '<div class="tip">喜欢的话可以扫码请我喝咖啡 ☕</div>' +
-    '</div>' +
-    '<p class="empty">按一下快捷键截张图，这页会自己刷出来。</p>';
+  const content = '<p class="empty">按一下快捷键截张图，分析会出现在这里。</p>';
   return fill('还没有截图', '按一下快捷键', content, '', token, 'empty', false);
 }
 
+// aha 赞助卡片：低调、可关闭、只提一次。有收款码图显示图，缺失则文字 + 项目主页链接降级。
+function ahaCardHtml(token, sponsorAvailable) {
+  const inner = sponsorAvailable
+    ? '<img src="/sponsor?t=' + encodeURIComponent(token) + '" alt="赞助二维码">'
+    : '<p class="tip">开源免费，项目主页：<a href="' +
+      GITHUB_URL +
+      '" target="_blank" rel="noopener">' +
+      GITHUB_URL +
+      '</a></p>';
+  return (
+    '<div class="card sponsor-card" id="ahaCard">' +
+    '<div class="tip">这个小工具帮到你了吗？欢迎请我喝杯咖啡 ☕</div>' +
+    inner +
+    '<button class="btn ghost" id="ahaClose" type="button">知道了</button>' +
+    '</div>'
+  );
+}
+
 // item: {name, image, state, text}；key 由调用方传入（= store.latestKey()，保证与轮询比对一致）。
-function renderPage(item, token, key) {
+// opts: {showSponsor, sponsorAvailable}。showSponsor 为真时在结果下方插入 aha 赞助卡片。
+function renderPage(item, token, key, opts) {
   if (!item) return renderEmpty(token);
+  const showSponsor = !!(opts && opts.showSponsor);
+  const sponsorAvailable = !!(opts && opts.sponsorAvailable);
   const title = pretty(item.name);
   const note = NOTE[item.state];
   const blocks = [];
@@ -225,12 +251,17 @@ function renderPage(item, token, key) {
     );
   }
   blocks.push(textCardHtml(item.state, item.text));
-  // 有记录时底部：查看更早大按钮 + 不显眼赞助入口
+  // aha 时刻：首次分析成功后在结果下方低调提一次赞助（用户关闭后不再出现）。
+  if (showSponsor && item.state === 'done') {
+    blocks.push(ahaCardHtml(token, sponsorAvailable));
+  }
+  // 有记录时底部：查看更早大按钮 + 不显眼赞助入口（图缺失时指向项目主页）。
+  const footLink = sponsorAvailable
+    ? '<a href="/sponsor?t=' + encodeURIComponent(token) + '" target="_blank" rel="noopener">☕ 赞助作者</a>'
+    : '<a href="' + GITHUB_URL + '" target="_blank" rel="noopener">☕ 项目主页</a>';
   const footer =
     '<button class="btn ghost" id="showHist" type="button">查看更早</button>' +
-    '<div class="sponsor-foot"><a href="/sponsor?t=' +
-    encodeURIComponent(token) +
-    '" target="_blank" rel="noopener">☕ 赞助作者</a></div>';
+    '<div class="sponsor-foot">' + footLink + '</div>';
   const effectiveKey = key != null ? key : item.name + '|' + item.state;
   return fill(title, note, blocks.join(''), footer, token, effectiveKey, true);
 }

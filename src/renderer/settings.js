@@ -112,8 +112,14 @@ async function refreshSponsor() {
   const dataUri = await window.api.getSponsorImage();
   if (dataUri) {
     $('sponsorImg').src = dataUri;
-    sponsorLoaded = true;
+    $('sponsorImg').style.display = 'block';
+    $('sponsorFallback').style.display = 'none';
+  } else {
+    // 收款码缺失（本地开发 / fork）：隐藏碎图，显示文字 + 项目主页降级。
+    $('sponsorImg').style.display = 'none';
+    $('sponsorFallback').style.display = 'block';
   }
+  sponsorLoaded = true;
 }
 if (window.api.onGotoTab) window.api.onGotoTab(gotoTab);
 

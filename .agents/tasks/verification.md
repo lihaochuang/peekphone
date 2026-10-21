@@ -202,3 +202,20 @@ Internal requirements count=0 size=12
 - **max_tokens 默认 1500 → 800**：`config.js` 的 `defaults().maxTokens=800`（已有用户 config.json 不覆盖，只影响首次生成）；`settings.html` 输入框默认值 800 + 旁加提示「越大越慢，日常解读 600~800 够用」；`settings.js`/`llm.js` 的 `|| 1500` 回退同步改 800。`node --check` 全通过。
 - **赞助码去名**：`assets/sponsor-wechat.jpg` 已为去名版本（图未动）；确认 `ipc.js`、`server.js`、README 均引用 `assets/sponsor-wechat.jpg` 该路径，无需改引用。
 - **README**：安装小节改为「mac ad-hoc 签名但未公证（无苹果账号，属正常）」并补首启授权步骤；新增「故障排查」小节给出 `tccutil reset ScreenCapture com.peekphone.app`（针对从未签名旧版升级后授权失配），均中英双语。
+
+---
+
+## v0.2.4 验证（赞助改 aha 时刻 / 收款码出仓库，本机 Intel Mac，2026-10-21）
+
+验证方式：mock `electron` 模块后跑真实 `config.js`/`store.js`/`server.js`/`page.js` 的 HTTP 全流程（脚本 `/tmp/pp_verify.js`，19 条断言全过）。本地无 `assets/sponsor-wechat.jpg`（已 git rm + gitignore），默认即走「图缺失降级」分支。
+
+- **空状态（item 3）**：`GET /`（无任何 slot）只含引导文案「按一下快捷键截张图，分析会出现在这里」；无 `id="ahaCard"`、无 ☕、无「收款/请我喝」等渲染赞助内容（CSS 的 `.sponsor-card` 样式与 JS 的 `dismissSponsor` 处理器属非可见代码，不计）。
+- **图缺失优雅降级（item 1/2）**：`GET /sponsor` 图不存在返回 404（不报错不碎图）；首次成功后的 aha 卡片走文字降级，含 `github.com/lihaochuang/peekphone` 链接、无 `src="/sponsor?t="` 图。
+- **aha 时刻（item 4）**：构造一条 `saveAnalysis` 成功 slot，`config.recordSuccess()` 前 `shouldShowSponsor()=false`、后 `=true`；`/latest` 返回体带 `showSponsor:true`；`GET /` 结果下方出现 `id="ahaCard"` + 文案「这个小工具帮到你了吗？欢迎请我喝杯咖啡」。阈值 = 第 1 次成功（`SPONSOR_SUCCESS_THRESHOLD=1`，config.js 注释说明可改 3）。
+- **只提一次**：`POST /sponsor/dismiss` 返回 200 `{ok:true}` 并置 `sponsorShown=true`；之后 `shouldShowSponsor()=false`、再 `GET /` 无 `id="ahaCard"`。
+- **有图分支（item 4 模拟 secret 存在）**：临时写入一张 jpg 后 `GET /sponsor` 200 `image/jpeg`；重置 `sponsorShown=false` 后 `GET /` 的 aha 卡片用 `<img src="/sponsor?t=...">`。**验证完即 `fs.unlinkSync` 删除临时图并断言文件不存在**，未误提交。
+- **token 鉴权（item 5）**：`/sponsor` 带 token 已过鉴权（404 为图缺失非鉴权失败）、不带 token 403；`/sponsor/dismiss` 不带 token 403、带 token 200。
+- **托盘赞助入口（item 5）**：托盘「赞助作者 ❤️」保留 → 设置「赞助」标签页；`ipc.getSponsorImage()` 有图返回 data URI、缺图返回 `''`，`settings.js` 据此在缺图时隐藏碎图、显示文字 + 项目主页降级（`settings.html` 加 `#sponsorFallback`）。
+- **CI 注入（item 1）**：`.github/workflows/build.yml` 在 Build 前加 `Inject sponsor QR (optional)` 步，node 一行跨平台解码 `SPONSOR_QR_B64`→`assets/sponsor-wechat.jpg`；secret 为空时 `if(b)` 不成立 → 静默跳过，本机 `SPONSOR_QR_B64="" node -e ...` 实测输出「skipped (no secret) -> build continues」。`.gitignore` 加 `assets/sponsor-wechat.jpg`，`git check-ignore` 确认生效。
+- **语法**：`config.js`/`pipeline.js`/`server.js`/`page.js`/`settings.js` `node --check` 全过；`package.json` 合法、version=0.2.4。
+- **README（item 6）**：删除 `<img src="assets/sponsor-wechat.jpg">`，改为纯文字赞助说明（收款码在应用内，官方发布版内置、fork 不含），中英双语。

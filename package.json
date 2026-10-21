@@ -1,7 +1,7 @@
 {
   "name": "peekphone",
   "productName": "PeekPhone",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "按快捷键全屏截图，用你自己配置的多模态大模型分析，手机扫码在浏览器看结果。本地局域网 + 自带 key + 无隐身。",
   "license": "MIT",
   "author": "PeekPhone contributors",
