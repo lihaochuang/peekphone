@@ -94,17 +94,24 @@ function textCard(state,text){
 }
 let busy=false, histMode=false, histList=[], histIdx=0;
 
-// 轮询：翻页态暂停，避免被 2s 自动刷新打断
+// 轮询：翻页态暂停，避免被 2s 自动刷新打断。
+// fetch 必带超时中止，否则手机弱网/锁屏后台会让请求永久挂起、busy 卡死、轮询再也不触发（只能手动刷新）。
 async function tick(){
-  if(histMode||busy||document.hidden)return; busy=true;
+  if(histMode||busy||document.hidden)return;
+  busy=true;
+  const ctrl=new AbortController();
+  const to=setTimeout(function(){ctrl.abort();},4000);
   try{
-    const r=await fetch('/latest?t='+enc(T),{cache:'no-store'});
+    const r=await fetch('/latest?t='+enc(T),{cache:'no-store',signal:ctrl.signal});
     if(r.ok){const d=await r.json(); if(d.key!==KEY)location.reload();}
   }catch(e){}
-  busy=false;
+  finally{ clearTimeout(to); busy=false; }  // 无论成功/失败/超时，busy 必复位
 }
 setInterval(tick,2000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+// 从后台切回时强制复位 busy 再轮询一次，兜底任何卡死状态
+document.addEventListener('visibilitychange',function(){if(!document.hidden){busy=false;tick();}});
+// 页面重新获得焦点（切 App 回来）也立即查一次
+window.addEventListener('focus',function(){busy=false;tick();});
 
 // 客户端渲染一条记录（与服务端 renderPage 的卡片结构一致）
 function itemHtml(d){
