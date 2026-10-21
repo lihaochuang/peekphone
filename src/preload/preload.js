@@ -15,6 +15,14 @@ contextBridge.exposeInMainWorld('api', {
   resetToken: () => ipcRenderer.invoke('resetToken'),
   setPort: (port) => ipcRenderer.invoke('setPort', port),
   setLoginItem: (enabled) => ipcRenderer.invoke('setLoginItem', enabled),
+  getSponsorImage: () => ipcRenderer.invoke('getSponsorImage'),
+  // 未保存改动确认（3 按钮：保存/放弃/取消），返回 'save' | 'discard' | 'cancel'
+  confirmUnsaved: () => ipcRenderer.invoke('confirmUnsaved'),
+  // 脏状态同步给主进程（供关窗口确认）
+  setDirty: (b) => ipcRenderer.send('settings:dirty', b),
+  // 主进程 -> UI：要求「保存并关闭」
+  onSaveAll: (cb) => ipcRenderer.on('settings:save-all', () => cb()),
+  closingAfterSave: () => ipcRenderer.send('settings:closing-after-save'),
   // 主进程 -> UI：切标签
   onGotoTab: (cb) => ipcRenderer.on('goto-tab', (_e, tab) => cb(tab)),
 });

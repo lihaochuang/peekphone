@@ -51,6 +51,11 @@ function createStore(historyRoot) {
     fs.writeFileSync(path.join(slotDir(slot), 'error.txt'), String(message), 'utf8');
   }
 
+  // 流式期间把当前累计文本写进 slot，使 readSlot 在 pending 态也能读到部分文本。
+  function savePartial(slot, text) {
+    fs.writeFileSync(path.join(slotDir(slot), 'partial.txt'), String(text), 'utf8');
+  }
+
   // 找截图：先 shot.jpg 再 shot.png（与原型 read_slot 一致）。
   function findImage(slot) {
     for (const file of ['shot.jpg', 'shot.png']) {
@@ -71,10 +76,21 @@ function createStore(historyRoot) {
       text = fs.readFileSync(analysis, 'utf8');
     } else if (fs.existsSync(error)) {
       state = 'error';
-      text = '这次没拿到分析\n\n' + fs.readFileSync(error, 'utf8');
+      // 原始内容（friendly + 可选 DETAIL_SEP + 详情），展示层负责折叠详情
+      text = fs.readFileSync(error, 'utf8');
     } else {
       state = 'pending';
-      text = '正在分析，稍等几秒…';
+      // 流式进行中有部分文本则显示部分文本，否则「正在分析」占位
+      const partial = path.join(dir, 'partial.txt');
+      let pt = '';
+      if (fs.existsSync(partial)) {
+        try {
+          pt = fs.readFileSync(partial, 'utf8');
+        } catch (e) {
+          pt = '';
+        }
+      }
+      text = pt && pt.trim() ? pt : '正在分析，稍等几秒…';
     }
     return { name: slot, image, state, text };
   }
@@ -92,9 +108,47 @@ function createStore(historyRoot) {
   }
 
   // 前端轮询比对用。带 state，pending→done 也触发刷新。无记录 'empty'。
+  // 流式 pending 期额外带上部分文本长度，使文本变长时 key 变化、手机页随之刷新。
   function latestKey() {
     const item = latest();
-    return item ? item.name + '|' + item.state : 'empty';
+    if (!item) return 'empty';
+    let key = item.name + '|' + item.state;
+    if (item.state === 'pending') key += '|' + Buffer.byteLength(item.text, 'utf8');
+    return key;
+  }
+
+  // slot 名安全校验：无分隔符/不以 . 开头，且解析后仍在 history 内、是已存在目录。
+  function validSlot(slot) {
+    if (!slot || slot.includes('/') || slot.includes('\\') || slot.startsWith('.')) return false;
+    const target = path.resolve(historyRoot, slot);
+    if (!target.startsWith(path.resolve(historyRoot) + path.sep)) return false;
+    try {
+      return fs.statSync(target).isDirectory();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 取某条（带防穿越校验）；slot 名非法或不存在返回 null。
+  function getItem(name) {
+    if (!validSlot(name)) return null;
+    return readSlot(name);
+  }
+
+  // 倒序列最近 limit 条（默认全部），每条 {name, state}，供手机历史翻页。
+  function listSlots(limit) {
+    ensureRoot();
+    const dirs = fs
+      .readdirSync(historyRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort()
+      .reverse();
+    const sliced = limit ? dirs.slice(0, limit) : dirs;
+    return sliced.map((name) => {
+      const it = readSlot(name);
+      return { name: it.name, state: it.state };
+    });
   }
 
   function purge(keepDays) {
@@ -134,9 +188,12 @@ function createStore(historyRoot) {
     saveImage,
     saveAnalysis,
     saveError,
+    savePartial,
     readSlot,
     latest,
     latestKey,
+    getItem,
+    listSlots,
     purge,
     resolveImagePath,
   };

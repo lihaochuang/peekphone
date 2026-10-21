@@ -4,10 +4,14 @@
 // 路由：/latest（轮询 key）、/img/<slot>/<file>（防穿越）、/（页面）。
 const http = require('http');
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const url = require('url');
 const config = require('./config');
 const page = require('./page');
+
+// 赞助码：唯一允许的静态图白名单，走现有鉴权，不走 /img 的 slot 逻辑。
+const SPONSOR_PATH = path.join(__dirname, '..', '..', 'assets', 'sponsor-wechat.jpg');
 
 let server = null;
 let currentPort = null;
@@ -59,6 +63,33 @@ function handle(req, res) {
 
   if (pathname === '/latest') {
     const payload = JSON.stringify({ key: store.latestKey() });
+    return send(res, 200, 'application/json; charset=utf-8', payload, { 'Cache-Control': 'no-store' });
+  }
+
+  // 赞助码图（鉴权后返回，不内联进 HTML）
+  if (pathname === '/sponsor') {
+    if (!fs.existsSync(SPONSOR_PATH)) return send(res, 404, 'text/plain', 'not found');
+    const data = fs.readFileSync(SPONSOR_PATH);
+    return send(res, 200, 'image/jpeg', data, { 'Cache-Control': 'no-store' });
+  }
+
+  // 历史列表：倒序最近 50 条 {name,state}，供手机翻页
+  if (pathname === '/history') {
+    const payload = JSON.stringify({ items: store.listSlots(50) });
+    return send(res, 200, 'application/json; charset=utf-8', payload, { 'Cache-Control': 'no-store' });
+  }
+
+  // 取某条：JSON 返回 page 渲染所需字段（防穿越复用 store.getItem 校验）
+  if (pathname === '/item') {
+    const item = store.getItem(query.name || '');
+    if (!item) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not found' }));
+    const payload = JSON.stringify({
+      name: item.name,
+      state: item.state,
+      text: item.text,
+      image: item.image, // 'shot.jpg' | 'shot.png' | null
+      pretty: page.pretty(item.name),
+    });
     return send(res, 200, 'application/json; charset=utf-8', payload, { 'Cache-Control': 'no-store' });
   }
 

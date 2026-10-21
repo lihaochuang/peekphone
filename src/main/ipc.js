@@ -1,6 +1,8 @@
 'use strict';
 // 主进程侧 ipcMain 处理器。设置变更按 design §7 运行时生效。
-const { ipcMain, app } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { ipcMain, app, dialog, BrowserWindow } = require('electron');
 const QRCode = require('qrcode');
 const config = require('./config');
 const prompts = require('./prompts');
@@ -53,11 +55,41 @@ function register(hooks) {
       const promptName = conf.currentPrompt || 'default';
       const promptText = prompts.read(promptName) || prompts.read('default') || '描述这张截图。';
       const { text, via } = await llm.analyze(shot.buffer, shot.mediaType, promptText.trim(), conf);
-      return { ok: true, via, text };
+      return { ok: true, via, text, supportedModels: llm.getLastSupported() };
     } catch (error) {
-      return { error: String(error.message || error) };
+      // 人话 friendly + 原始 detail 折叠 + 可能的 supported_models（给设置页展示）
+      return {
+        error: error.friendly || String(error.message || error),
+        detail: error.detail || '',
+        supportedModels: error.supported_models || llm.getLastSupported() || null,
+      };
     } finally {
       testInFlight = false;
+    }
+  });
+
+  // 未保存改动确认：保存/放弃/取消
+  ipcMain.handle('confirmUnsaved', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const r = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['保存', '放弃', '取消'],
+      defaultId: 0,
+      cancelId: 2,
+      message: '有改动未保存',
+      detail: '是否保存这些改动？',
+    });
+    return ['save', 'discard', 'cancel'][r.response] || 'cancel';
+  });
+
+  // 赞助码图：以 data URI 返回，避免放宽设置窗 CSP。
+  ipcMain.handle('getSponsorImage', () => {
+    try {
+      const p = path.join(__dirname, '..', '..', 'assets', 'sponsor-wechat.jpg');
+      const buf = fs.readFileSync(p);
+      return 'data:image/jpeg;base64,' + buf.toString('base64');
+    } catch (e) {
+      return '';
     }
   });
 

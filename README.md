@@ -16,6 +16,28 @@
 
 手机只看结果，不装任何 App。
 
+## 演示 / Screenshots
+
+| 设置（模型页）| 手机页·最新一条 | 手机页·空状态 |
+|---|---|---|
+| ![设置](assets/screenshots/settings.png) | ![最新](assets/screenshots/phone-latest.png) | ![空状态](assets/screenshots/phone-empty.png) |
+
+> 均为本机真实运行截图（Electron `capturePage`）。本机无 `ffmpeg`/`gifski` 工具链，未伪造动图，用静态截图序列代替演示。
+> *Real screenshots captured on-device; no gif toolchain available locally, so static shots are used instead of a faked animation.*
+
+## v0.2 新增 / What's new in v0.2
+
+- **修 OpenAI 路径 `/v1` bug**：base 不含版本段（如 `http://localhost:3001`）时自动补 `/v1`，不再 404；自带版本段（智谱 `/v4`、百炼 `/compatible-mode/v1`）不重复拼接。
+- **模型自动识别 + 优先级回退**：模型名**留空即「自动」**，对多模型网关（返回 `supported_models` 的反代）自动挑一个支持视觉的模型；手填的模型若被上游下线/不支持，自动回退到可用视觉模型，不用你手动改。
+- **错误归类成人话**：连不上 / 超时 / Key 无效 / 地址不对 / 模型不可用 / 不支持图片 / 太大 / 限流，都翻译成「原因 + 怎么办」一句话，原始报文折叠在「点开看详情」里。
+- **手机历史可翻页**：默认仍只看最新一条，底部「查看更早」一条条往前翻，翻页时暂停自动刷新，「回到最新」恢复。
+- **流式输出**：支持流的端点边收边显示（手机页文本逐步变长）；不支持流的端点（如本机反代）自动回退非流式，不会弄挂。per-provider 开关，默认关。
+- **应用 / 托盘图标**：蓝色取景框 + 镜头的品牌图标（`assets/icon-src/` 下矢量源 + 零依赖生成脚本）。
+- **赞助页**：托盘「赞助作者 ❤️」+ 手机空状态默认展示收款码。
+- **测试即保存**：设置页「测试识别」通过后自动落盘，不再出现「测了没保存、手机还用旧配置」的脱节；改了没保存关窗口会提示。
+- **失败不打扰**：截图/分析失败不弹任何桌面通知，原因写进手机页 error 态 + `userData/logs/peek.log` 滚动日志。
+- **包体积**：mac x64 dmg 从 ~103MB 降到 ~89.5MB（maximum 压缩 + 语言包裁剪 + files 收窄）。
+
 ## 与同类项目的差异
 
 GitHub 上「截图问 AI」的工具不少，PeekPhone 故意收敛成这三点，和它们划清界线：
@@ -43,7 +65,7 @@ npm run dist:win   # 打 win nsis
 ## 配置与使用
 
 1. 启动后点托盘图标 →「打开设置」。
-2. **模型**：选预设（智谱 / 百炼）或自定义，填 Base URL / API Key / 模型名，点「测试识别」真截一张验证配置通不通。
+2. **模型**：选预设（智谱 / 百炼）或自定义，填 Base URL / API Key / 模型名（**留空即自动选可用视觉模型**），可勾「流式输出」。点「测试识别」真截一张验证——**测通即自动保存**。
 3. **手机连接**：手机连同一 WiFi，扫二维码或打开显示的 `http://<局域网IP>:<端口>/?t=<token>`。
 4. 按快捷键截图，手机页面几秒后自动刷出截图 + 分析。
 5. **提示词**：内置 `default`（通用屏幕解读）/ `code`（代码报错排查）/ `data`（图表数据解读）三套，可编辑、可新增、可删。想要「答题器」之类专用场景，自己新增一套即可。
@@ -78,6 +100,17 @@ npm run dist:win   # 打 win nsis
 - 运行时第三方依赖只有 `qrcode`；HTTP 服务、HTTP 客户端、图片压缩全用系统/内置能力。
 
 从 Python 原型（`screencapture`+`sips` 截图、多 provider LLM、局域网页面）移植而来，业务逻辑逐函数照搬，承载方式换成常驻 Electron App。
+
+v0.2 的模型调用层（`llm.js`）新增：URL 版本段判定、SSE 流式解析（Node 内置，无库）、模型自动识别 + 优先级回退、错误归类层；失败滚动日志落 `userData/logs/peek.log`。
+
+## 赞助 / Sponsor
+
+如果 PeekPhone 帮到了你，欢迎扫码请我喝杯咖啡 ☕。开源免费，赞助全凭自愿。
+托盘菜单「赞助作者 ❤️」或设置页「赞助」标签页也能看到同一个码。
+
+*If PeekPhone helps you, feel free to buy me a coffee. It's free and open-source; sponsoring is entirely optional.*
+
+<img src="assets/sponsor-wechat.jpg" alt="赞助二维码 / Sponsor QR" width="240" />
 
 ## License
 

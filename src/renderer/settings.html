@@ -13,7 +13,10 @@
     <button data-tab="hotkey">快捷键</button>
     <button data-tab="phone">手机连接</button>
     <button data-tab="general">通用</button>
+    <button data-tab="sponsor">赞助 ❤️</button>
   </nav>
+
+  <div id="dirtyBar" class="dirtybar" style="display:none">● 有改动未保存</div>
 
   <main>
     <!-- 模型配置 -->
@@ -39,8 +42,10 @@
           <button id="toggleKey" type="button">👁</button>
         </span>
       </label>
-      <label>模型名 <input id="model" type="text" placeholder="如 glm-4v / qwen-vl-plus / claude-..." /></label>
+      <label>模型名 <input id="model" type="text" placeholder="默认自动（留空即自动选择可用的视觉模型）" /></label>
       <label>max_tokens <input id="maxTokens" type="number" value="1500" /></label>
+      <label class="inline"><input id="stream" type="checkbox" /> 流式输出（不支持的端点会自动回退）</label>
+      <p id="supportedModels" class="hint"></p>
       <div class="row">
         <button id="saveModel" type="button">保存模型配置</button>
         <button id="testBtn" type="button">测试识别（真截屏+真调模型）</button>
@@ -106,6 +111,14 @@
       <label>JPEG 质量(1-100) <input id="jpegQuality" type="number" value="70" /></label>
       <div class="row"><button id="saveGeneral" type="button">保存通用设置</button></div>
       <p class="hint">未签名版本开机自启在部分系统可能需手动在系统设置里添加。</p>
+    </section>
+
+    <!-- 赞助 -->
+    <section data-pane="sponsor">
+      <h2>赞助作者 ❤️</h2>
+      <p>如果 PeekPhone 帮到了你，欢迎扫码请我喝杯咖啡 ☕，这是我持续维护的动力。</p>
+      <img id="sponsorImg" alt="赞助二维码" />
+      <p class="hint">开源免费，赞助全凭自愿。</p>
     </section>
   </main>
 
