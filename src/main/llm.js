@@ -5,6 +5,13 @@
 
 const RETRY_STATUS = [408, 429, 500, 502, 503, 504];
 
+// 组合超时信号与外部总超时信号：任一触发即中止该次 fetch。
+// extSignal 由 pipeline 的总硬超时/强制刷新传入；缺省时只用 per-request 超时（等价原行为）。
+function reqSignal(spec, extSignal) {
+  const perReq = AbortSignal.timeout(spec.timeout * 1000);
+  return extSignal ? AbortSignal.any([perReq, extSignal]) : perReq;
+}
+
 class ModelError extends Error {
   constructor(message) {
     super(message);
@@ -278,14 +285,14 @@ function createSSEParser(format) {
 }
 
 // 流式请求：成功返回全文；任何异常（非2xx、无 body、解析不出文本）抛错由 analyze 回退。
-async function tryProviderStream(spec, prompt, imageB64, mediaType, maxTokens, onDelta) {
+async function tryProviderStream(spec, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal) {
   const { body, headers } = buildPayload(spec, prompt, imageB64, mediaType, maxTokens);
   body.stream = true;
   const res = await fetch(spec.url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(spec.timeout * 1000),
+    signal: reqSignal(spec, extSignal),
   });
   if (!res.ok) {
     const rawBody = await res.text().catch(() => '');
@@ -320,7 +327,7 @@ async function tryProviderStream(spec, prompt, imageB64, mediaType, maxTokens, o
   return { text: full, raw: null, attempt: 1 };
 }
 
-async function tryProvider(spec, prompt, imageB64, mediaType, maxTokens) {
+async function tryProvider(spec, prompt, imageB64, mediaType, maxTokens, extSignal) {
   const { body, headers } = buildPayload(spec, prompt, imageB64, mediaType, maxTokens);
   const requestBody = JSON.stringify(body);
   const errors = []; // {kind, detail}
@@ -331,7 +338,7 @@ async function tryProvider(spec, prompt, imageB64, mediaType, maxTokens) {
         method: 'POST',
         headers,
         body: requestBody,
-        signal: AbortSignal.timeout(spec.timeout * 1000),
+        signal: reqSignal(spec, extSignal),
       });
       if (!res.ok) {
         const rawBody = await res.text().catch(() => '');
@@ -368,11 +375,14 @@ async function tryProvider(spec, prompt, imageB64, mediaType, maxTokens) {
       }
     } catch (error) {
       if (error instanceof ModelError && error.kind) throw error; // 已分类的模型级错误直接上抛
+      // 总超时/强制刷新中止：请求已被真正 abort，立刻上抛，不再重试空等
+      if (extSignal && extSignal.aborted) throw error;
       const kind = classify(null, null, error);
       if (errors.length === 0) firstKind = kind;
       errors.push({ kind, detail: '第' + attempt + '次 ' + (error.name || 'Error') + ': ' + error.message });
     }
     if (attempt < spec.retries) {
+      if (extSignal && extSignal.aborted) break; // 已中止，不再睡眠重试
       await new Promise((r) => setTimeout(r, Math.min(2 ** (attempt - 1), 8) * 1000));
     }
   }
@@ -383,17 +393,19 @@ async function tryProvider(spec, prompt, imageB64, mediaType, maxTokens) {
 }
 
 // 对单个确定模型发一次请求（流式优先，流式非模型级失败回退非流式重试一次同模型）。
-async function callOnce(spec, prompt, imageB64, mediaType, maxTokens, onDelta) {
+async function callOnce(spec, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal) {
   if (spec.stream && typeof onDelta === 'function') {
     try {
-      const r = await tryProviderStream(spec, prompt, imageB64, mediaType, maxTokens, onDelta);
+      const r = await tryProviderStream(spec, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal);
       return { text: r.text, raw: r.raw, via: spec.name + '（' + spec.model + '，流式）' };
     } catch (streamErr) {
+      // 总超时/强制刷新中止：请求已被真正 abort，别回退非流式再发一次
+      if (extSignal && extSignal.aborted) throw streamErr;
       // 模型级错误（换模型能解决）直接上抛；端点不支持流等则回退非流式，别用同一死模型瞎回退
       if (streamErr && (streamErr.supported_models || streamErr.kind === 'image_unsupported')) throw streamErr;
     }
   }
-  const r = await tryProvider(spec, prompt, imageB64, mediaType, maxTokens);
+  const r = await tryProvider(spec, prompt, imageB64, mediaType, maxTokens, extSignal);
   return { text: r.text, raw: r.raw, via: spec.name + '（' + spec.model + '，第' + r.attempt + '次成功）' };
 }
 
@@ -409,7 +421,7 @@ function getLastSupported() {
 
 // 对单个 provider 做「模型自动识别 + 优先级回退」。只在检测到 supported_models 结构时才换模型，
 // 普通单模型 API 不触发（其报错不带该结构）→ 按用户填的 model 调用、失败照常抛（经归类层翻译）。
-async function resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTokens, onDelta) {
+async function resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal) {
   const cacheKey = spec.format + '|' + spec.url;
   const manual = !!spec.model; // 用户是否手填了模型
   let autoMode = !manual; // 用户模型遭遇模型级错误后转为 true，开始按优先级回退
@@ -446,11 +458,13 @@ async function resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTo
     tried.add(model);
     const trySpec = Object.assign({}, spec, { model });
     try {
-      const r = await callOnce(trySpec, prompt, imageB64, mediaType, maxTokens, onDelta);
+      const r = await callOnce(trySpec, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal);
       resolvedCache.set(cacheKey, model); // 记住可用视觉模型
       return r;
     } catch (e) {
       errs.push(e);
+      // 总超时/强制刷新中止：别继续换模型探测，立刻上抛
+      if (extSignal && extSignal.aborted) throw e;
       if (e && e.supported_models) {
         // 多模型网关：学清单，转自动回退，换下一个
         supported = e.supported_models;
@@ -494,7 +508,7 @@ async function resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTo
 // onDelta(delta, full) 可选：provider.stream===true 且传了 onDelta 时走流式；
 // 流式对不支持流的端点会优雅回退非流式（见 callOnce），不会把能用的端点弄挂。
 // 返回 {text, raw, via}；全失败抛带 .friendly/.detail/.supported_models 的 ModelError。
-async function analyze(imageBuffer, mediaType, prompt, config, onDelta) {
+async function analyze(imageBuffer, mediaType, prompt, config, onDelta, extSignal) {
   const imageB64 = imageBuffer.toString('base64');
   const maxTokens = parseInt(config.maxTokens, 10) || 800;
   const priority =
@@ -514,10 +528,12 @@ async function analyze(imageBuffer, mediaType, prompt, config, onDelta) {
       continue;
     }
     try {
-      return await resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTokens, onDelta);
+      return await resolveAndCall(spec, priority, prompt, imageB64, mediaType, maxTokens, onDelta, extSignal);
     } catch (error) {
       lastErr = error;
       failures.push(error);
+      // 总超时/强制刷新中止：请求已 abort，别再试下一个 provider
+      if (extSignal && extSignal.aborted) throw error;
     }
   }
   // 单 provider（常态）直接透传其归类错误；多 provider 时取第一个的人话 + 合并详情。

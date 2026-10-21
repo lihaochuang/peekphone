@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
   removePrompt: (name) => ipcRenderer.invoke('removePrompt', name),
   testRecognition: (draftConfig) => ipcRenderer.invoke('testRecognition', draftConfig),
   setHotkey: (accelerator) => ipcRenderer.invoke('setHotkey', accelerator),
+  setHotkeyForce: (accelerator) => ipcRenderer.invoke('setHotkeyForce', accelerator),
   getPhoneConnection: () => ipcRenderer.invoke('getPhoneConnection'),
   resetToken: () => ipcRenderer.invoke('resetToken'),
   setPort: (port) => ipcRenderer.invoke('setPort', port),

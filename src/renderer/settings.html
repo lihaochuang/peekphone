@@ -76,13 +76,20 @@
     <!-- 快捷键 -->
     <section data-pane="hotkey">
       <h2>全局快捷键</h2>
-      <p>点下面的框然后按下组合键。默认 <code>CommandOrControl+Alt+P</code>（mac ⌘⌥P）。</p>
+      <p>截图键：正常截图并分析，分析进行中时再按会被忽略。默认 <code>CommandOrControl+Alt+P</code>（mac ⌘⌥P）。</p>
       <input id="hotkeyInput" type="text" readonly placeholder="点此再按组合键" />
       <div class="row">
-        <button id="saveHotkey" type="button">保存快捷键</button>
+        <button id="saveHotkey" type="button">保存截图键</button>
       </div>
       <p id="hotkeyMsg" class="hint"></p>
-      <p class="hint">不支持纯修饰键双击（如 ⌘⌘）。</p>
+      <h2>强制刷新键</h2>
+      <p>卡住时的解套键：中止进行中的那张，立即重新截图分析。默认 <code>CommandOrControl+Alt+O</code>（mac ⌘⌥O）。</p>
+      <input id="hotkeyForceInput" type="text" readonly placeholder="点此再按组合键" />
+      <div class="row">
+        <button id="saveHotkeyForce" type="button">保存强制刷新键</button>
+      </div>
+      <p id="hotkeyForceMsg" class="hint"></p>
+      <p class="hint">两个键不能相同。不支持纯修饰键双击（如 ⌘⌘）。</p>
     </section>
 
     <!-- 手机连接 -->

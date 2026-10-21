@@ -219,3 +219,20 @@ Internal requirements count=0 size=12
 - **CI 注入（item 1）**：`.github/workflows/build.yml` 在 Build 前加 `Inject sponsor QR (optional)` 步，node 一行跨平台解码 `SPONSOR_QR_B64`→`assets/sponsor-wechat.jpg`；secret 为空时 `if(b)` 不成立 → 静默跳过，本机 `SPONSOR_QR_B64="" node -e ...` 实测输出「skipped (no secret) -> build continues」。`.gitignore` 加 `assets/sponsor-wechat.jpg`，`git check-ignore` 确认生效。
 - **语法**：`config.js`/`pipeline.js`/`server.js`/`page.js`/`settings.js` `node --check` 全过；`package.json` 合法、version=0.2.4。
 - **README（item 6）**：删除 `<img src="assets/sponsor-wechat.jpg">`，改为纯文字赞助说明（收款码在应用内，官方发布版内置、fork 不含），中英双语。
+
+---
+## v0.2.5 验证（总超时自恢复 + ⌘⌥O 强制刷新键，本机 Intel Mac，Node v24.17.0，2026-10-21）
+
+验证方式：`Module._load` 注入假 `electron`/`./capture`/`./prompts`，跑**真实** `config.js`/`llm.js`/`pipeline.js`/`shortcut.js`，打一个本地 HTTP 服务（`/hang` 永不回、`/hangstream` 发半个 SSE 事件后挂起、`/ok` 正常回 JSON）。脚本 `/tmp/peek_v025_verify.js`，8 条断言全过（exit 0）。
+
+- **问题1-总超时（非流式）**：provider 指向 `/hang`、`analyzeTimeout=2`、provider `timeout=120/retries=3`。`runCapture` 在 **2011ms** 返回 `{error,aborted:true,timedOut:true}`——即没有等满 120s×3，证明是总超时经 `AbortController`→`AbortSignal.any` 真正 abort 了挂起的 fetch。slot 写 `error / 「分析超时，已中止」`，`isInFlight()===false`（finally 释放）。
+- **问题1-自恢复**：超时后把 provider 切 `/ok` 再调 `runCapture`，直接 `ok:true` 出分析——证明超时后锁已释放、再按 ⌘⌥P 不再被卡。
+- **问题1-流式超时（item 3）**：provider `stream:true` 指向 `/hangstream`（发一个 delta 后挂起），`analyzeTimeout=2`。`runCapture` 在 **2006ms** 被总超时中止、`aborted+timedOut`、`isInFlight()===false`——证明边收边写的流式路径也受总超时约束。
+- **正常路径（item 2）**：provider `/ok`、`analyzeTimeout=60`，`runCapture` 返回 `ok:true`、`head` 含模型文本，不受总超时影响。
+- **问题2-强制刷新（item 1）**：第一张指向 `/hang` 不 await 使其卡住（`isInFlight()===true`），切 `/ok` 后按 `runCaptureForce`：旧那张被中止返回 `{aborted:true,timedOut:false}`、slot 写 `「已被强制刷新中止」`；`runCaptureForce` `await currentRunPromise` 确认旧的 finally 真正放锁后立即开新一张，新一张 `ok:true` 且是**不同 slot**。证明 ⌘⌥O 任何时候按都有反应、是解套键。
+- **问题2-两键共存（item 2/4）**：`shortcut.register('capture', ⌘⌥P)` 与 `register('force', ⌘⌥O)` 均返回 true（假 globalShortcut 记录注册集）。
+- **问题2-改键冲突（item 3/4）**：`reregister('force', ⌘⌥P)`（与截图键相同）返回 false 且强制键原值 ⌘⌥O 仍在（不误丢）；`reregister('force', ⌘⌥K)` 返回 true，旧键注销、新键生效。设置页 `setHotkey`/`setHotkeyForce` 分别走 role=capture/force。
+- **配置默认值**：`config.defaults()` 含 `analyzeTimeout=60`、`hotkeyForce=CommandOrControl+Alt+O`（已有用户 config.json 不覆盖，仅首次生成）。
+- **语法**：`pipeline.js`/`llm.js`/`shortcut.js`/`config.js`/`main.js`/`ipc.js`/`preload.js`/`settings.js` `node --check` 全过；`package.json` version=0.2.5。
+- **无弹窗约定**：全程只 `logEvent` + 写手机页 error 态，未调任何 `Notification`/`dialog`（超时/强制刷新/注册失败均只 console.warn + 日志）。
+- **真模型路径（环境说明，非回归）**：本机反代 `localhost:3001` 在听，经真实 `llm.analyze`（带 extSignal）发请求能拿到 HTTP 响应（说明 signal 透传不破坏真实调用），但反代对 anthropic body 返回 `400 Improperly formed request`（`REQUEST_BODY_INVALID`）——这是 KiroAdmin 反代的 body 形状问题，v0.2.4 即如此，与本次改动无关（payload 构造未动），不在本任务范围。正常/异常路径已由上面的受控 `/ok`、`/hang` 服务端到端证明。

@@ -44,7 +44,12 @@ function defaults() {
     shrinkLongEdge: 1200,
     jpegQuality: 70,
     keepDays: 7,
+    // 整个 runCapture（截图→分析出文本）的总硬超时（秒）。超过即中止挂起的请求、写 error、放锁。
+    // 比单 provider 的 timeout/重试累计更短，用于防「上游挂起 → inFlight 一直占着像卡死」。
+    analyzeTimeout: 60,
     hotkey: 'CommandOrControl+Alt+P',
+    // 强制刷新键：中止进行中的那张并立即重来，任何时候按都有反应（卡住时的解套键）。
+    hotkeyForce: 'CommandOrControl+Alt+O',
     currentPrompt: 'default',
     launchAtLogin: false,
     noticeAcknowledged: false,

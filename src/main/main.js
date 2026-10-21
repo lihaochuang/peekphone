@@ -55,10 +55,16 @@ async function boot() {
     console.warn('[PeekPhone] 服务启动失败: 端口 ' + conf.server.port + ' 不可用，请在设置里换端口');
   }
 
-  // 全局快捷键
-  const ok = shortcut.register(conf.hotkey, () => pipeline.runCapture(config.get().currentPrompt));
+  // 全局快捷键：⌘⌥P 正常截图（尊重进行中的）；⌘⌥O 强制重来（中止进行中的、解套键）
+  const ok = shortcut.register('capture', conf.hotkey, () => pipeline.runCapture(config.get().currentPrompt));
   if (!ok) {
     console.warn('[PeekPhone] 快捷键 ' + conf.hotkey + ' 注册失败，请在设置里换一个');
+  }
+  const forceKey = conf.hotkeyForce || 'CommandOrControl+Alt+O';
+  const okForce = shortcut.register('force', forceKey, () => pipeline.runCaptureForce(config.get().currentPrompt));
+  if (!okForce) {
+    // 不弹窗，沿用无弹窗约定，只记日志（多半是被占用或与截图键冲突）
+    console.warn('[PeekPhone] 强制刷新快捷键 ' + forceKey + ' 注册失败（可能被占用或与截图键冲突），请在设置里换一个');
   }
 
   // IPC

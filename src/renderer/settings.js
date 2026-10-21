@@ -238,27 +238,37 @@ $('currentPrompt').addEventListener('change', async () => {
   await window.api.updateConfig({ currentPrompt: $('currentPrompt').value });
 });
 
-// 快捷键捕获
+// 快捷键捕获（截图键与强制刷新键共用同一捕获逻辑，只写到对应输入框）
 const mods = { Meta: 'Command', Control: 'Control', Alt: 'Alt', Shift: 'Shift' };
-$('hotkeyInput').addEventListener('keydown', (e) => {
-  e.preventDefault();
-  const parts = [];
-  if (e.metaKey) parts.push('Command');
-  if (e.ctrlKey) parts.push('Control');
-  if (e.altKey) parts.push('Alt');
-  if (e.shiftKey) parts.push('Shift');
-  const key = e.key;
-  if (!(key in mods) && key.length) {
-    let k = key.length === 1 ? key.toUpperCase() : key;
-    parts.push(k);
-    $('hotkeyInput').value = parts.join('+');
-  }
-});
+function bindHotkeyCapture(inputId) {
+  $(inputId).addEventListener('keydown', (e) => {
+    e.preventDefault();
+    const parts = [];
+    if (e.metaKey) parts.push('Command');
+    if (e.ctrlKey) parts.push('Control');
+    if (e.altKey) parts.push('Alt');
+    if (e.shiftKey) parts.push('Shift');
+    const key = e.key;
+    if (!(key in mods) && key.length) {
+      let k = key.length === 1 ? key.toUpperCase() : key;
+      parts.push(k);
+      $(inputId).value = parts.join('+');
+    }
+  });
+}
+bindHotkeyCapture('hotkeyInput');
+bindHotkeyCapture('hotkeyForceInput');
 $('saveHotkey').addEventListener('click', async () => {
   const acc = $('hotkeyInput').value.trim();
   if (!acc) return;
   const r = await window.api.setHotkey(acc);
-  $('hotkeyMsg').textContent = r.ok ? '✅ 已生效：' + r.hotkey : '❌ 注册失败（可能被占用/非法），仍用：' + r.hotkey;
+  $('hotkeyMsg').textContent = r.ok ? '✅ 已生效：' + r.hotkey : '❌ 注册失败（可能被占用/与强制刷新键冲突/非法），仍用：' + r.hotkey;
+});
+$('saveHotkeyForce').addEventListener('click', async () => {
+  const acc = $('hotkeyForceInput').value.trim();
+  if (!acc) return;
+  const r = await window.api.setHotkeyForce(acc);
+  $('hotkeyForceMsg').textContent = r.ok ? '✅ 已生效：' + r.hotkey : '❌ 注册失败（可能被占用/与截图键冲突/非法），仍用：' + r.hotkey;
 });
 
 // 手机连接
@@ -317,6 +327,7 @@ async function init() {
   $('stream').checked = p.stream === true;
   $('maxTokens').value = c.maxTokens || 800;
   $('hotkeyInput').value = c.hotkey || 'CommandOrControl+Alt+P';
+  $('hotkeyForceInput').value = c.hotkeyForce || 'CommandOrControl+Alt+O';
   $('keepDays').value = c.keepDays || 7;
   $('shrinkLongEdge').value = c.shrinkLongEdge || 1200;
   $('jpegQuality').value = c.jpegQuality || 70;

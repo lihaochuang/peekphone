@@ -94,12 +94,22 @@ function register(hooks) {
   });
 
   ipcMain.handle('setHotkey', (_e, accelerator) => {
-    const ok = shortcut.reregister(accelerator);
+    const ok = shortcut.reregister('capture', accelerator);
     if (ok) {
       config.update({ hotkey: accelerator });
       if (onHotkeyChanged) onHotkeyChanged();
     }
     return { ok, hotkey: ok ? accelerator : config.get().hotkey };
+  });
+
+  // 强制刷新键：与截图键同样的交互；冲突/被占用时 reregister 返回 false，只回显旧值（不弹窗）。
+  ipcMain.handle('setHotkeyForce', (_e, accelerator) => {
+    const ok = shortcut.reregister('force', accelerator);
+    if (ok) {
+      config.update({ hotkeyForce: accelerator });
+      if (onHotkeyChanged) onHotkeyChanged();
+    }
+    return { ok, hotkey: ok ? accelerator : config.get().hotkeyForce };
   });
 
   ipcMain.handle('getPhoneConnection', async () => {
