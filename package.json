@@ -1,7 +1,7 @@
 {
   "name": "peekphone",
   "productName": "PeekPhone",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "按快捷键全屏截图，用你自己配置的多模态大模型分析，手机扫码在浏览器看结果。本地局域网 + 自带 key + 无隐身。",
   "license": "MIT",
   "author": "PeekPhone contributors",
@@ -15,11 +15,24 @@
   "build": {
     "appId": "com.peekphone.app",
     "productName": "PeekPhone",
-    "files": ["src/**", "build/**", "package.json"],
+    "asar": true,
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "npmRebuild": false,
+    "electronLanguages": ["zh-CN", "en-US"],
+    "files": [
+      "src/**",
+      "assets/icon.icns",
+      "assets/icon.ico",
+      "assets/icon.png",
+      "assets/tray/**",
+      "assets/sponsor-wechat.jpg",
+      "package.json"
+    ],
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
       "category": "public.app-category.productivity",
-      "icon": "build/icon.icns",
+      "icon": "assets/icon.icns",
       "extendInfo": {
         "NSScreenCaptureUsageDescription": "PeekPhone 需要屏幕录制权限来截取当前屏幕用于 AI 分析。",
         "LSUIElement": true
@@ -27,7 +40,7 @@
     },
     "win": {
       "target": ["nsis"],
-      "icon": "build/icon.ico"
+      "icon": "assets/icon.ico"
     },
     "dmg": { "sign": false }
   },

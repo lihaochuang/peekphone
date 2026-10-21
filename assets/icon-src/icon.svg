@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PeekPhone 品牌图标：截图取景框（四角括号）+ 相机镜头（中心环）。主色蓝 #0a84ff。
+     这是矢量源；实际 png/icns/ico 由 gen-icons.js 以相同形状参数程序化渲染（本机无 SVG 光栅化工具链）。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a9bff"/>
+      <stop offset="1" stop-color="#0060df"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225" fill="url(#bg)"/>
+  <g fill="#ffffff">
+    <!-- 四角取景框括号，inset=164, arm=205, thickness=56 -->
+    <rect x="164" y="164" width="205" height="56"/>
+    <rect x="164" y="164" width="56" height="205"/>
+    <rect x="655" y="164" width="205" height="56"/>
+    <rect x="804" y="164" width="56" height="205"/>
+    <rect x="164" y="804" width="56" height="205"/>
+    <rect x="164" y="948" width="205" height="56"/>
+    <rect x="804" y="804" width="56" height="205"/>
+    <rect x="655" y="948" width="205" height="56"/>
+    <!-- 镜头：白环 + 内蓝 + 中心白点 -->
+    <circle cx="512" cy="512" r="174"/>
+  </g>
+  <circle cx="512" cy="512" r="113" fill="#0060df"/>
+  <circle cx="512" cy="512" r="46" fill="#ffffff"/>
+</svg>

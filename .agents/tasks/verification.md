@@ -86,3 +86,91 @@ GET /img/../../config.json -> 404  (路径穿越被挡)
 - NIT-2：`captureViaDesktopCapturer` 按宽高谁大决定 `resize({width})` 或 `{height}`，保持长边 1200 比例。
 - NIT-3：pipeline 注释去掉「刷新 key/立即看到截图」的推送式措辞，改为「建 pending slot 后下次轮询读到，截图在 capture+saveImage 后出现」。
 - NIT-4：provider 内字段保持 snake_case（`base_url/api_key/model`）与 `llm.resolveProvider` 读取一致，顶层 camelCase。
+
+---
+
+# v0.2 验证证据（2026-10-21，本机 Intel x64 Mac，Node v24.17.0 / Electron 33.4.11）
+
+> 密钥红线：所有真调模型用的 key 运行时从原型 `20261021_截图问AI/config.json` 读取（反代 `http://localhost:3001`，当前上游视觉模型 `gpt-5.6-terra`），**未写入仓库/日志/commit，未打印到终端**。`peek.log` 实测不含 key（见 §v0.2-6）。
+> 验证脚本均为临时文件（/tmp），不入仓。reviewer 直接读本节即可，无需重跑。
+
+## v0.2-0 纯逻辑单测（无需联网/Electron）
+
+`node /tmp/peek_llm_test.js` → **42 条断言全通过**。覆盖：
+- `joinUrl` 七种：`localhost:3001`+openai→`/v1/chat/completions`（修好旧 bug）；智谱 `/v4`、百炼 `/compatible-mode/v1` 不重复；anthropic 自带 `/v1` 不重复成 `/v1/v1`。
+- `resolveProvider`：model 留空不再报「缺 model」（=自动）；base/key 缺仍报错；`stream` 默认 false。
+- SSE 解析：OpenAI（分片喂入，3 次增量）与 Anthropic（`content_block_delta`，2 次增量）都拼回完整文本。
+- `classify` 八类：conn/timeout/auth(401)/notfound(404 HTML)/model_unsupported/image_unsupported/too_large(413)/rate_limit(429) 全部命中预期。
+- `parseSupportedStructure` 只认带 `supported_models` 结构：命中网关错误，404/智谱式普通错误不命中（保证普通单模型 API 不触发换模型）。
+- store：pending 部分文本可读、`latestKey` 随部分文本变化、`saveAnalysis` 后转 done；`listSlots` 列两条、`getItem` 防穿越（`../../config`→null）。
+- page：空状态含 `/sponsor` + 文案；error 态拆「人话 + 折叠详情」；`<script>` 转义。
+
+## v0.2-1 /v1 bug 修好且没弄坏 Anthropic + 模型自动回退（真调反代）
+
+`node /tmp/peek_proxy_verify.js`（走 `llm.analyze`，真调 `localhost:3001`，发 `assets/icon.png`）：
+
+| 场景 | 结果 |
+|---|---|
+| OpenAI 格式 + model 留空(自动) | OK，via=`openai_chat（gpt-5.6-terra，第1次成功）`，文本「蓝色圆角方形图标中央有白色镜头状圆环，四角配有扫描框标记。」|
+| Anthropic 格式 + model=`claude-sonnet-4-5`(已下线) | OK（自动回退），via=`anthropic_messages（gpt-5.6-terra）`，返回真实描述 |
+| OpenAI 格式 + model=`claude-sonnet-4-5`(已下线) | OK（自动回退 gpt-5.6-terra）|
+| OpenAI + model=`glm-5`(不识图) | OK（image_unsupported→自动换 gpt-5.6-terra）|
+
+旁证：裸 `curl` 复现 `POST /chat/completions`（无 /v1）→ `404 Cannot POST`；`POST /v1/chat/completions` + gpt-5.6-terra → 200；证明修复点准确。`lastSupported` 实测 = `[gpt-5.6-terra,gpt-5.6-luna,deepseek-3.2,minimax-m2.5,minimax-m2.1,glm-5,qwen3-coder-next,kimi-k3]`（供设置页展示）。
+
+## v0.2-2 错误归类成人话（故意制造各类失败）
+
+同脚本尾段，每类最终展示文案：
+
+| 制造 | friendly 文案（给小白看的那句）|
+|---|---|
+| 端口 3999 没人听 | 连不上模型服务，检查 Base URL 和本地服务是否开着 |
+| 错 key | API Key 无效或没权限，检查 Key 是否填对 |
+| 错路径 `/nope` | 接口地址不对，检查 Base URL 和请求格式（OpenAI / Anthropic）是否匹配 |
+| 模型下线 | （不作为最终错误——已自动回退成功）|
+| glm-5 不识图 | （不作为最终错误——已自动换）|
+
+原始 HTTP 码 / JSON 全部保留在 `detail`（手机页「点开看详情」折叠、设置页附在人话后）。
+
+## v0.2-3 流式：支持流增量 + 不支持流优雅回退
+
+- **live 流式**（`node /tmp/peek_stream_verify.js`，本地 fake SSE server）：via=`...（fake，流式）`，`onDelta` 回调 **4 次**、文本单调增长、首末增量间隔 **115ms**、拼回「你好，这是流式输出测试」→ 证明边收边出、非一次到位。
+- **不支持流回退**（反代 `localhost:3001` 开 `stream:true`）：增量回调 0 次 → 自动回退非流式仍 OK 返回文本，证明「开 stream 不会把原本能用的反代弄挂」。
+- **pipeline 集成**（见 §v0.2-5 stream-pipeline）：pending 期手机可读部分文本长度序列 `[4,12,20]` 递增，done 落全文。
+
+## v0.2-4/5 Electron 集成（截图/鉴权/翻页/赞助/失败/流式/日志）
+
+`./node_modules/.bin/electron /tmp/peek_electron_verify.js`（隔离临时 store，端口 18813）：
+
+```
+(empty) / 200=true 含赞助码=true 含文案=true          # 空状态手机页默认展示收款码
+(auth) 带token=200 无token=403 /img穿越=404           # 路径穿越用 %2e%2e 绕客户端归一直打服务端解析器
+(sponsor) 带token=200 type=image/jpeg bytes=144312 无token=403
+(shot) ext=jpg bytes=129902 字节多样性=253 非黑=true    # 真截图非黑（纯黑约 1 色）
+(pipeline-ok) {ok:true, via:"verify（gpt-5.6-terra，第1次成功）"} slot=done
+(history) status=200 条数=1 ; (item) 合法=200 穿越=404
+(pipeline-fail) error="连不上模型服务，检查 Base URL 和本地服务是否开着" slotState=error 文本友好=true
+(stream-pipeline) done=true pending期partial长度序列=[4,12,20] 增长=true 最终done含全文=true
+(log) 存在=true 不含key=true
+```
+
+截图验证（§v0.2-7 的三张 PNG）佐证：空状态渲染出微信收款码 + 「喜欢的话可以扫码请我喝咖啡 ☕」；最新一条渲染截图 + 分析 + 「查看更早」+ 底部「☕ 赞助作者」。
+
+## v0.2-6 交互修正（A 测试即保存 / B 失败不打扰）
+
+- **A·脏改动与保存**（`/tmp/peek_ui_verify.js` 驱动真实设置页 JS）：初始不脏→改模型名后 `isDirty=true`、脏条显示、标题「● 未保存」、保存按钮高亮→`saveModelConfig()` 后不脏且 `getConfig` 回读 `providers[0].model="glm-4v"` 已落盘→再改后 `applyState(savedState)` 放弃恢复为已存值且不脏。测试识图成功路径调用的就是同一 `saveModelConfig()`（即「测通即自动保存」）。关窗口/切标签的「保存/放弃/取消」经 `confirmUnsaved` IPC + `windows.js` 的 `close` 拦截 + `settings:save-all`/`closing-after-save` 协同已接线。
+- **B·失败只进日志不弹窗**：`pipeline` 已无任何失败桌面通知调用；失败写 `userData/logs/peek.log` 滚动日志（>1MB 轮转 .1）。实测日志尾部含 `OK slot=... via=gpt-5.6-terra` 与 `FAIL analyze ... reason=连不上模型服务...`，且**整文件不含 key**。失败通知开关已移除。
+
+## v0.2-7 图标 + dmg 体积
+
+- 图标生成（`node assets/icon-src/gen-icons.js`，零依赖，程序化渲染 PNG→iconutil→icns、自写 ICO 封装）：
+  `file assets/icon.icns` = *Mac OS X icon*；`assets/icon.ico` / `assets/tray/tray.ico` = *MS Windows icon*；`icon.png` 512×512；`trayTemplate.png` 22×22、`@2x` 44×44（mac 单色 Template）。图标为蓝色取景框+镜头品牌图，非默认 Electron。
+- **构建**：`electron-builder --mac dmg --x64` → `dist/PeekPhone-0.2.0.dmg` = **93,891,694 B ≈ 89.5MB**（v0.1 x64 为 103MB，↓约 13%）。
+- **图标进包**：`dist/mac/PeekPhone.app/Contents/Resources/icon.icns` 与 `assets/icon.icns` **字节完全一致**（`cmp` 通过）→ 构建出的 .app 显示新图标。`app.asar` 内含 `assets/tray/trayTemplate.png`/`@2x`/`tray.ico` 与 `assets/sponsor-wechat.jpg`；`demo/`、`.agents/`、`assets/icon-src/` 已排除（体积优化生效）。托盘 `tray.js` 指向 `assets/tray/`，打包路径 `app.asar/assets/tray/trayTemplate.png` 可加载。
+
+## v0.2 未尽说明（诚实）
+
+- **真实交互 gif**：本机无 `ffmpeg`/`gifski`，未伪造动图，`assets/screenshots/` 用真实静态截图（Electron `capturePage`）代替，README 已注明。
+- **arm64 dmg / Windows 包**：本机 Intel，仅实测 x64；arm64 与 win 由 CI 构建，运行正确性待对应平台用户反馈（与 v0.1 口径一致）。
+- **托盘图标肉眼呈现**：`/tmp/peek_tray_verify.js` 实测 `nativeImage.createFromPath(assets/tray/trayTemplate.png)` → `empty=false size=22x22`，`tray.build()` 不抛错、`ok=true`；mac 菜单栏像素级外观需人工目视。
+- **全量 `npm start` 启动**：本机已安装的 `/Applications/PeekPhone.app`（用户在用，未动）持有单实例锁，故开发实例按设计 `requestSingleInstanceLock()` 立即自退、启动日志无报错——属单实例正确行为。主进程各模块在 `/tmp/peek_electron_verify.js`（`app.whenReady` 后 server/pipeline/capture 全链路）已证可加载运行。

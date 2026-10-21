@@ -10,7 +10,7 @@ const pipeline = require('./pipeline');
 let tray = null;
 
 function iconPath() {
-  const base = path.join(__dirname, '..', '..', 'build', 'tray');
+  const base = path.join(__dirname, '..', '..', 'assets', 'tray');
   if (process.platform === 'win32') return path.join(base, 'tray.ico');
   return path.join(base, 'trayTemplate.png');
 }
@@ -56,6 +56,7 @@ function rebuild(onOpenSettings, onQuit) {
     { type: 'separator' },
     { label: '显示手机二维码', click: () => onOpenSettings('phone') },
     { label: '打开设置', click: () => onOpenSettings() },
+    { label: '赞助作者 ❤️', click: () => onOpenSettings('sponsor') },
     { type: 'separator' },
     { label: '退出', click: () => onQuit() },
   ]);
