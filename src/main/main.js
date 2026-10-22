@@ -39,6 +39,18 @@ async function boot() {
   server.setStore(store);
   pipeline.setStore(store);
 
+  // 手机远程触发截图：复用快捷键同一条编排。inFlight 时回 {skipped}，force 走强制重来。
+  server.setTrigger((force) => {
+    const promptName = config.get().currentPrompt;
+    if (force) {
+      pipeline.runCaptureForce(promptName);
+      return { ok: true };
+    }
+    if (pipeline.isInFlight()) return { skipped: true };
+    pipeline.runCapture(promptName);
+    return { ok: true };
+  });
+
   // 内置提示词首启落盘
   const prompts = require('./prompts');
   prompts.seedDefaults();

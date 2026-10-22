@@ -16,9 +16,15 @@ const SPONSOR_PATH = path.join(__dirname, '..', '..', 'assets', 'sponsor-wechat.
 let server = null;
 let currentPort = null;
 let store = null;
+let trigger = null; // 手机远程触发截图的回调，main.js 注入（避免 server 直接依赖 pipeline 制造循环引用）
 
 function setStore(s) {
   store = s;
+}
+
+// 注入「触发截图」回调：fn(force) 同步返回 {ok:true} / {skipped:true}。force=true 走强制重来。
+function setTrigger(fn) {
+  trigger = fn;
 }
 
 function authed(query) {
@@ -59,6 +65,33 @@ function handle(req, res) {
     const data = fs.readFileSync(real);
     const type = real.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
     return send(res, 200, type, data);
+  }
+
+  // 手机远程触发截图（仅同局域网 + token）。只允许 POST，GET 不触发（避免预取/爬虫误触）。
+  // 命中后调注入的 trigger：inFlight 时返回 {skipped:true}，否则触发 runCapture 返回 {ok:true}。
+  // force=1 走 runCaptureForce（中止进行中的那张、立即重来，手机端解套）。不等分析完成即返回，靠现有轮询刷新。
+  if (pathname === '/capture') {
+    if (req.method !== 'POST') {
+      return send(res, 405, 'application/json; charset=utf-8', JSON.stringify({ error: 'POST only' }), {
+        Allow: 'POST',
+        'Cache-Control': 'no-store',
+      });
+    }
+    if (!trigger) {
+      return send(res, 503, 'application/json; charset=utf-8', JSON.stringify({ error: 'trigger unavailable' }), {
+        'Cache-Control': 'no-store',
+      });
+    }
+    const force = query.force === '1' || query.force === 'true';
+    let result;
+    try {
+      result = trigger(force) || { ok: true };
+    } catch (e) {
+      return send(res, 500, 'application/json; charset=utf-8', JSON.stringify({ error: String((e && e.message) || e) }), {
+        'Cache-Control': 'no-store',
+      });
+    }
+    return send(res, 200, 'application/json; charset=utf-8', JSON.stringify(result), { 'Cache-Control': 'no-store' });
   }
 
   if (pathname === '/latest') {
@@ -159,4 +192,4 @@ function getPort() {
   return currentPort;
 }
 
-module.exports = { start, stop, restart, setStore, getPort };
+module.exports = { start, stop, restart, setStore, setTrigger, getPort };

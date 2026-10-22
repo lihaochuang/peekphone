@@ -236,3 +236,19 @@ Internal requirements count=0 size=12
 - **语法**：`pipeline.js`/`llm.js`/`shortcut.js`/`config.js`/`main.js`/`ipc.js`/`preload.js`/`settings.js` `node --check` 全过；`package.json` version=0.2.5。
 - **无弹窗约定**：全程只 `logEvent` + 写手机页 error 态，未调任何 `Notification`/`dialog`（超时/强制刷新/注册失败均只 console.warn + 日志）。
 - **真模型路径（环境说明，非回归）**：本机反代 `localhost:3001` 在听，经真实 `llm.analyze`（带 extSignal）发请求能拿到 HTTP 响应（说明 signal 透传不破坏真实调用），但反代对 anthropic body 返回 `400 Improperly formed request`（`REQUEST_BODY_INVALID`）——这是 KiroAdmin 反代的 body 形状问题，v0.2.4 即如此，与本次改动无关（payload 构造未动），不在本任务范围。正常/异常路径已由上面的受控 `/ok`、`/hang` 服务端到端证明。
+
+---
+
+## v0.2.6 验证（手机远程触发截图 POST /capture，本机 Intel Mac，Node v24.17.0，2026-10-22）
+
+验证方式：`Module._load` 注入假 `electron`/`./capture`/`./llm`，跑**真实** `config.js`/`store.js`/`page.js`/`pipeline.js`/`server.js`，并按 `main.js` 原样接线 `server.setTrigger`（force→runCaptureForce，否则 isInFlight?skipped:runCapture）。起真 HTTP 服务后用 Node `http` 客户端（等价 curl）打 `/capture` 各路径。脚本 `.agents/tasks/pp_v026_verify.js`，**17 条断言全过（exit 0）**。
+
+- **token 鉴权 + 方法限制**：`POST /capture?t=<token>`→200 `{ok:true}`；无 token→403；错 token→403；`GET /capture?t=<token>`→405 且 `Allow: POST`（GET 不触发，避免预取/爬虫误触）。
+- **真的触发了一次截图分析**：带 token 的 POST 后，经真实 `pipeline.runCapture`→真实 `store`，history 新增一条 slot，`latestKey` 由 `empty`→`…_default|done`（截图走假 capture、分析走假 llm，证明 server→trigger→pipeline→store 全链路通，不依赖易抖的反代）。
+- **GET 不触发**：`GET /capture` 后 history 条数不变（仍 1 条）。
+- **inFlight → skipped**：令分析挂起制造 inFlight，`pipeline.isInFlight()===true` 时再 `POST /capture`→200 `{skipped:true}`，不排队不并发。
+- **force 中止重来**：`POST /capture?force=1`→200 `{ok:true}`；滚动日志 `userData/logs/peek.log` 含 `FORCE 中止进行中的那张` + `ABORT …已被强制刷新中止`，证明真正 abort 了挂起那张并立即开新一张（新一张最终 done）。
+- **手机页按钮**：`renderEmpty` 与 `renderPage`（有记录态）HTML 均含 `id="capBtn"` 的「📸 截图分析」大按钮；内联 JS 以 `fetch('/capture?t='+enc(T),{method:'POST'…})` 指向正确端点，触发后 3 秒节流禁用。翻历史模式下按钮随 `#live` 隐藏。
+- **语法**：`server.js`/`main.js`/`page.js`/`pipeline.js` `node --check` 全过；`package.json` version=0.2.6。
+- **架构**：server 不直接 `require('./pipeline')`，经 `setTrigger` 注入回调（与既有 `setStore` 注入一致），无循环依赖；新端点全部走现有 token 鉴权，`/capture` 仅 POST。
+- **无弹窗约定**：未新增任何 `Notification`/`dialog`，沿用无弹窗。

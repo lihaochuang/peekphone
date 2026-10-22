@@ -9,6 +9,9 @@
 // 项目主页：收款码缺失时的文字降级链接。
 const GITHUB_URL = 'https://github.com/lihaochuang/peekphone';
 
+// 远程截图大按钮：空状态与有记录态都放在 #live 顶部（翻历史模式 #live 隐藏，按钮随之隐藏）。
+const CAPTURE_BTN = '<button class="btn" id="capBtn" type="button">📸 截图分析</button>';
+
 // 自写 HTML escape（Node 侧无 html.escape）。
 function escapeHtml(s) {
   return String(s)
@@ -169,6 +172,16 @@ function dismissSponsor(){
 }
 if(document.getElementById('ahaClose'))
   document.getElementById('ahaClose').addEventListener('click',dismissSponsor);
+// 📸 截图分析：POST /capture 远程触发电脑截图，触发后 3 秒内按钮禁用防连点，靠 2s 轮询刷出新结果。
+function triggerCapture(){
+  const b=document.getElementById('capBtn'); if(!b||b.disabled)return;
+  const old=b.textContent;
+  b.disabled=true; b.textContent='已触发，分析中…';
+  fetch('/capture?t='+enc(T),{method:'POST',cache:'no-store'}).catch(function(e){});
+  setTimeout(function(){b.disabled=false;b.textContent=old;},3000);
+}
+if(document.getElementById('capBtn'))
+  document.getElementById('capBtn').addEventListener('click',triggerCapture);
 </script></body></html>`;
 
 const NOTE = { done: '自动刷新中', pending: '分析中', error: '出错了' };
@@ -207,7 +220,8 @@ function fill(title, note, content, footer, token, key, hasItems) {
 
 // 空状态：只放引导文案，不放任何赞助/收款码。key 与 store.latestKey() 空态一致（'empty'）。
 function renderEmpty(token) {
-  const content = '<p class="empty">按一下快捷键截张图，分析会出现在这里。</p>';
+  const content =
+    CAPTURE_BTN + '<p class="empty">点上面的「截图分析」或按一下快捷键截张图，分析会出现在这里。</p>';
   return fill('还没有截图', '按一下快捷键', content, '', token, 'empty', false);
 }
 
@@ -237,7 +251,7 @@ function renderPage(item, token, key, opts) {
   const sponsorAvailable = !!(opts && opts.sponsorAvailable);
   const title = pretty(item.name);
   const note = NOTE[item.state];
-  const blocks = [];
+  const blocks = [CAPTURE_BTN];
   if (item.image) {
     const src =
       '/img/' +
